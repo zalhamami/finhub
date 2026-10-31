@@ -126,6 +126,34 @@ describe.skipIf(!url)('db schema (real Postgres, scratch database)', () => {
     ).resolves.toBeTypeOf('string');
   });
 
+  it('treats categorised transfer entries as fee lines (excluded from the zero-sum)', async () => {
+    const [cat] = await h.db
+      .insert(s.categories)
+      .values({ workspaceId: ws, kind: 'expense', name: 'Fee' })
+      .returning();
+    const run = (legs: bigint[], fee?: bigint) =>
+      h.db.transaction(async (tx) => {
+        const [t] = await tx
+          .insert(s.transactions)
+          .values({ workspaceId: ws, kind: 'transfer', occurredAt: new Date() })
+          .returning();
+        const mk = (accountId: string, amountMinor: bigint, categoryId?: string) => ({
+          workspaceId: ws,
+          transactionId: t!.id,
+          accountId,
+          amountMinor,
+          currency: 'IDR',
+          categoryId,
+        });
+        const rows = legs.map((a, i) => mk(i === 0 ? acctA : acctB, a));
+        if (fee !== undefined) rows.push(mk(acctA, fee, cat!.id));
+        await tx.insert(s.entries).values(rows);
+      });
+    await expect(run([-1000n, 1000n], -25n)).resolves.toBeUndefined();
+    await expect(run([-1000n, 900n], -25n)).rejects.toThrow(/legs sum to/);
+    await expect(run([-1000n], -25n)).rejects.toThrow(/at least two entries/);
+  });
+
   it('rejects expense with two account entries, and posted expense with none', async () => {
     await expect(
       post('expense', 'posted', [

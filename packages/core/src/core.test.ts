@@ -41,8 +41,35 @@ describe('validateTransaction', () => {
       'transfer_not_balanced',
     );
   });
-  it('allows transfer + fee only if balanced', () => {
+  it('treats categorised entries on a transfer as fee lines, excluded from the zero-sum', () => {
+    const fee = { ...e(-10n, 'IDR', 'a'), categoryId: 'cat-fee' };
+    expect(
+      validateTransaction(posted('transfer'), [e(-100n, 'IDR', 'a'), e(100n, 'IDR', 'b'), fee]),
+    ).toEqual([]);
+  });
+  it('still rejects unbalanced legs when a fee line is present', () => {
+    const fee = { ...e(-10n), categoryId: 'cat-fee' };
+    expect(validateTransaction(posted('transfer'), [e(-110n), e(100n), fee])[0]?.code).toBe(
+      'transfer_not_balanced',
+    );
+  });
+  it('an uncategorised extra entry is a leg, so it must balance', () => {
     expect(validateTransaction(posted('transfer'), [e(-110n), e(100n), e(10n)])).toEqual([]);
+    expect(validateTransaction(posted('transfer'), [e(-100n), e(100n), e(-10n)])[0]?.code).toBe(
+      'transfer_not_balanced',
+    );
+  });
+  it('a fee line alone does not make a transfer', () => {
+    const fee = { ...e(-10n), categoryId: 'c' };
+    expect(validateTransaction(posted('transfer'), [e(-100n), fee])[0]?.code).toBe(
+      'transfer_needs_two_accounts',
+    );
+  });
+  it('fee lines do not affect the cross-currency check', () => {
+    const fee = { ...e(-5000n), categoryId: 'c' };
+    expect(validateTransaction(posted('transfer'), [e(-1600000n), e(100n, 'USD'), fee])).toEqual(
+      [],
+    );
   });
   it('accepts cross-currency transfer', () => {
     expect(validateTransaction(posted('transfer'), [e(-1600000n), e(100n, 'USD')])).toEqual([]);

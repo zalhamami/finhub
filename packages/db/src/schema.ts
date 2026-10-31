@@ -267,6 +267,8 @@ export const transactions = pgTable(
     status: transactionStatus('status').notNull().default('posted'),
     source: text('source').notNull().default('manual'),
     createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    /** archived transactions are excluded from balances and reports */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
