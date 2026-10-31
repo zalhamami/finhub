@@ -104,3 +104,7 @@ export function onNotFound(c: Context) {
     404,
   );
 }
+
+/** 400 validation_error for a rule Zod cannot express; same shape as validationError(). */
+export const fieldError = (path: string, message: string) =>
+  new ApiError(400, 'validation_error', 'Invalid body', { issues: [{ path, message }] });

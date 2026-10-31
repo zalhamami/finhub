@@ -10,8 +10,15 @@ export type AppEnv = { Variables: { db: Db; workspaceId: string } };
  * bigint JSON: every bigint (all *_minor money fields) is serialized as a decimal string,
  * because JSON numbers lose precision beyond 2^53. Inputs accept string or safe integer.
  */
-export function send(c: Context, data: unknown, status: 200 | 201 = 200) {
-  const body = JSON.stringify({ data }, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+export function send(
+  c: Context,
+  data: unknown,
+  status: 200 | 201 = 200,
+  extra: Record<string, unknown> = {},
+) {
+  const body = JSON.stringify({ data, ...extra }, (_k, v) =>
+    typeof v === 'bigint' ? v.toString() : v,
+  );
   return c.body(body, status, { 'content-type': 'application/json; charset=UTF-8' });
 }
 

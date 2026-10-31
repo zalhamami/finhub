@@ -15,7 +15,8 @@
     "db:generate": "pnpm --filter @finhub/db db:generate",
     "db:migrate": "pnpm --filter @finhub/db db:migrate",
     "db:seed": "pnpm --filter @finhub/db db:seed",
-    "dev": "pnpm --filter @finhub/server dev"
+    "dev": "pnpm --filter @finhub/server dev",
+    "build": "pnpm -r --if-present build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

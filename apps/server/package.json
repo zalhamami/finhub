@@ -10,7 +10,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build": "tsup",
+    "start:prod": "node dist/index.js"
   },
   "dependencies": {
     "@finhub/core": "workspace:*",
@@ -21,7 +23,8 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "tsx": "^4.20.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.20.0"
   }
 }

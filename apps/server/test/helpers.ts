@@ -62,3 +62,21 @@ export function client(app: TestEnv['app'], workspaceId?: string) {
     return { status: res.status, json, data: json.data, error: json.error };
   };
 }
+
+export type Api = ReturnType<typeof client>;
+
+/** Lookups against the seeded demo data (account types, categories) + small factories. */
+export async function lookups(A: Api) {
+  const types = (await A('GET', '/account-types')).data as { id: string; name: string }[];
+  const cats = (await A('GET', '/categories?flat=true')).data as {
+    id: string;
+    name: string;
+  }[];
+  const type = (n: string) => types.find((t) => t.name === n)!.id;
+  const cat = (n: string) => cats.find((c) => c.name === n)!.id;
+  const account = async (name: string, typeName: string, extra: Record<string, unknown> = {}) =>
+    (await A('POST', '/accounts', { name, type_id: type(typeName), ...extra })).data.id as string;
+  return { type, cat, account };
+}
+
+export const iso = (d: string) => `${d}T05:00:00+07:00`;
