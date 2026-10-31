@@ -1,0 +1,25 @@
+.amount {
+  font-variant-numeric: var(--amount-features);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.income {
+  color: light-dark(var(--mantine-color-income-8), var(--mantine-color-income-4));
+}
+
+.over {
+  color: light-dark(var(--mantine-color-expense-7), var(--mantine-color-expense-4));
+}
+
+.dimmed {
+  color: var(--mantine-color-dimmed);
+}
+
+.hero {
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: left;
+}

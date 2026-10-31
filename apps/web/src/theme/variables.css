@@ -1,0 +1,25 @@
+/* Global variables and base rules. Component styles live in CSS Modules next to each component. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* money: Plus Jakarta Sans has tnum/lnum */
+  --amount-features: tabular-nums lining-nums;
+  --tabbar-height: 64px;
+}
+
+:root[data-mantine-color-scheme='light'] {
+  --page-bg: #f7f7f5; /* warm off-white, not pure white */
+}
+:root[data-mantine-color-scheme='dark'] {
+  --page-bg: var(--mantine-color-dark-7);
+}
+
+body {
+  background: var(--page-bg);
+  font-variant-numeric: lining-nums;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
