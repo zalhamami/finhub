@@ -10,22 +10,18 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
-# Later workspaces (apps/web, packages/bot, packages/jobs): add their package.json COPY lines here.
+COPY packages/jobs/package.json packages/jobs/
+COPY packages/bot/package.json packages/bot/
+COPY apps/web/package.json apps/web/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
-# ---- build: self-contained server bundle (dist/index.js + dist/drizzle) ----
+# ---- build: self-contained server bundle (dist/index.js + dist/drizzle + dist/public) ----
 FROM deps AS build
 COPY tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
-RUN pnpm --filter @finhub/server build
-# OPTIONAL web build (session 4): skipped while apps/web does not exist. When it does, its build output
-# must land in /app/apps/server/dist/public (Vite: set build.outDir or copy it as below).
-RUN if [ -d apps/web ]; then \
-      pnpm --filter web build && cp -r apps/web/dist apps/server/dist/public; \
-    else \
-      mkdir -p apps/server/dist/public; \
-    fi
+# web first: the server build copies apps/web/dist to dist/public (served with SPA fallback)
+RUN pnpm --filter @finhub/web build && pnpm --filter @finhub/server build
 
 # ---- runtime: the bundle needs no node_modules ----
 FROM node:22-slim AS runtime

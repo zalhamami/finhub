@@ -12,7 +12,7 @@ docker compose up db -d     # Postgres 16 on 127.0.0.1:5432
 export DATABASE_URL=postgres://finhub:change-me@localhost:5432/finhub
 pnpm db:migrate
 pnpm db:seed                # idempotent demo workspace, currencies, types, categories
-pnpm dev                    # http://localhost:3000/healthz
+pnpm dev                    # API http://localhost:3000 + web http://localhost:5173 (proxies /api)
 ```
 
 ## Checks
@@ -48,15 +48,15 @@ One transaction = header + entries. Expense (negative), income (positive) and ad
 
 ## Run modes, build, Docker
 
-`ROLE=all|web|worker` (default `all`). `web`/`all` apply migrations on start. The worker is a stub until session 4.
+`ROLE=all|web|worker` (default `all`). `web`/`all` apply migrations on start and serve HTTP; `all`/`worker` also start the pg-boss worker (own `pgboss` schema; currently only a `system.ping` job, the nightly snapshot lands in M3). `web` runs no jobs.
 
 ```sh
-pnpm build                          # apps/server/dist/index.js (self-contained) + dist/drizzle
+pnpm build                          # builds apps/web, then apps/server/dist/index.js (self-contained) + dist/drizzle + dist/public (the SPA)
 DATABASE_URL=... PORT=3000 node apps/server/dist/index.js
 docker compose up -d --build        # db + app on 127.0.0.1:3000 (needs POSTGRES_PASSWORD in .env)
 ```
 
-The web app (session 4) is served from `PUBLIC_DIR` (default `./public` beside the bundle, `/app/dist/public` in the image) with SPA fallback. A `ROLE=worker` container has no HTTP port, so disable the image HEALTHCHECK for it.
+The web app (`apps/web`, Vite + React + Mantine) is served from `PUBLIC_DIR` (default `./public` beside the bundle, `/app/dist/public` in the image) with SPA fallback. A `ROLE=worker` container has no HTTP port, so disable the image HEALTHCHECK for it.
 
 ## Backup / restore
 
@@ -64,3 +64,11 @@ The web app (session 4) is served from `PUBLIC_DIR` (default `./public` beside t
 infra/backup.sh                     # backups/finhub-<UTC timestamp>.dump, keeps 30 days (BACKUP_DIR, RETENTION_DAYS)
 docker compose stop app && infra/restore.sh backups/finhub-....dump   # asks for confirmation (-y to skip)
 ```
+
+## Web app
+
+`pnpm dev` runs the server (:3000) and Vite (:5173, proxies `/api` and `/healthz`). `pnpm --filter @finhub/web build` outputs `apps/web/dist`; the root `pnpm build` copies it to `apps/server/dist/public` so one process serves SPA and API. Currently: Kekayaan (net worth) reads the real reports API; other pages are placeholders for M2.
+
+## Telegram bot
+
+Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_ALLOWED_CHAT_IDS` (see `.env.example`), then register `https://<host>/telegram/webhook/<secret>` with Telegram (`setWebhook`). Without the first two the route does not exist. For local development use long polling: `pnpm --filter @finhub/bot dev`.

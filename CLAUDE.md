@@ -7,20 +7,26 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - `apps/server` – Hono API (`/healthz`, `/health`, `/api/v1`)
 - `packages/db` – Drizzle schema, SQL migrations (`drizzle/`), seed, client factory
 - `packages/core` – pure TS domain logic (money, ledger validation); no framework imports
-- Later: `apps/web`, `packages/bot`, `packages/jobs`
+- `apps/web` – Vite + React 19 SPA (`@finhub/web`)
+- `packages/jobs` – pg-boss setup (`createBoss`, `startWorker`, typed `JobRegistry`); own `pgboss` schema
+- `packages/bot` – grammY bot factory (`createBot`), allowlist, `/start`
 
 ## Commands
 
-- `pnpm install` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format` · `pnpm build`
+- `pnpm dev` (server :3000 + Vite :5173 with /api proxy) · `pnpm install` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format` · `pnpm build`
 - `pnpm db:generate` (after schema change) · `pnpm db:migrate` · `pnpm db:seed` (need `DATABASE_URL`)
 - DB tests need a real Postgres via `DATABASE_URL`; they use a scratch database.
 
 ## Runtime, build, deploy
 
-- `ROLE` env: `all` (default, HTTP + worker), `web` (HTTP only), `worker` (no HTTP; stub loop until pg-boss in session 4). Migrations run on startup for `all`/`web`. SIGTERM/SIGINT shut down gracefully.
-- `pnpm build` bundles `apps/server` with tsup into one self-contained `apps/server/dist/index.js` (workspace packages and npm deps inlined; no node_modules at runtime) and copies `packages/db/drizzle` to `dist/drizzle`. Run with `node apps/server/dist/index.js`. Migrations folder: `MIGRATIONS_DIR` > `./drizzle` beside the bundle > the `@finhub/db` source folder (dev).
+- `ROLE` env: `all` (default, HTTP + worker), `web` (HTTP only), `worker` (no HTTP; pg-boss worker only). `all`/`worker` start pg-boss (needs `DATABASE_URL`; jobs registered in `packages/jobs/src/index.ts`, nightly snapshot is M3). Migrations run on startup for `all`/`web`. SIGTERM/SIGINT shut down gracefully.
+- `pnpm build` bundles `apps/server` with tsup into one self-contained `apps/server/dist/index.js` (workspace packages and npm deps inlined; no node_modules at runtime), copies `packages/db/drizzle` to `dist/drizzle` and `apps/web/dist` to `dist/public`. Root `pnpm build` runs web first, then server. Run with `node apps/server/dist/index.js`. Migrations folder: `MIGRATIONS_DIR` > `./drizzle` beside the bundle > the `@finhub/db` source folder (dev).
 - Static web: `PUBLIC_DIR` (default `./public` beside the bundle) is served with SPA fallback to `index.html` for GET paths outside `/api`, `/healthz`, `/health`; a missing path with a file extension is a 404. Skipped quietly if the dir is absent.
 - `Dockerfile` (multi-stage, runtime has only `dist/`), `docker-compose.yml` `app` + `db`. `infra/backup.sh` / `infra/restore.sh` (pg_dump -Fc / pg_restore via `docker compose exec -T db`).
+
+## Telegram
+
+`POST /telegram/webhook/:secret` (grammY `webhookCallback`) is mounted only when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` are set; the secret is compared in constant time, a wrong one is 404. Only chat ids in `TELEGRAM_ALLOWED_CHAT_IDS` are served (empty = nobody). Local long polling: `pnpm --filter @finhub/bot dev`.
 
 ## API conventions (`apps/server`)
 
@@ -35,7 +41,7 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 
 ## UI
 
-Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever.
+Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `postcss-preset-mantine` (+ `postcss-simple-vars`). Theme in `apps/web/src/theme/theme.ts` (amber primary, dark text on fills; sage income, clay expense), globals in `theme/variables.css`. Icons: Tabler, stroke 1.75. UI copy is Indonesian; dayjs locale `id`. Money from the API is a bigint string: `lib/money.ts` -> core `formatIDR`, never `Number`.
 
 ## Money & numbers
 
