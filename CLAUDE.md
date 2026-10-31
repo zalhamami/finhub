@@ -11,9 +11,16 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 
 ## Commands
 
-- `pnpm install` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format`
+- `pnpm install` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format` · `pnpm build`
 - `pnpm db:generate` (after schema change) · `pnpm db:migrate` · `pnpm db:seed` (need `DATABASE_URL`)
 - DB tests need a real Postgres via `DATABASE_URL`; they use a scratch database.
+
+## Runtime, build, deploy
+
+- `ROLE` env: `all` (default, HTTP + worker), `web` (HTTP only), `worker` (no HTTP; stub loop until pg-boss in session 4). Migrations run on startup for `all`/`web`. SIGTERM/SIGINT shut down gracefully.
+- `pnpm build` bundles `apps/server` with tsup into one self-contained `apps/server/dist/index.js` (workspace packages and npm deps inlined; no node_modules at runtime) and copies `packages/db/drizzle` to `dist/drizzle`. Run with `node apps/server/dist/index.js`. Migrations folder: `MIGRATIONS_DIR` > `./drizzle` beside the bundle > the `@finhub/db` source folder (dev).
+- Static web: `PUBLIC_DIR` (default `./public` beside the bundle) is served with SPA fallback to `index.html` for GET paths outside `/api`, `/healthz`, `/health`; a missing path with a file extension is a 404. Skipped quietly if the dir is absent.
+- `Dockerfile` (multi-stage, runtime has only `dist/`), `docker-compose.yml` `app` + `db`. `infra/backup.sh` / `infra/restore.sh` (pg_dump -Fc / pg_restore via `docker compose exec -T db`).
 
 ## API conventions (`apps/server`)
 
@@ -22,6 +29,8 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - Request bodies/queries are Zod-validated (`v('json'|'query'|'param', schema)`); body schemas are strict (unknown fields -> 400). Wire format is snake_case.
 - **bigint over JSON:** every `*_minor` field is a decimal **string** in responses (JSON numbers lose precision > 2^53). Inputs accept a string or a safe integer (int64 range). Never put a JS number through money math.
 - **Workspace scoping:** `workspaceMiddleware` sets `c.var.workspaceId` from `X-Workspace-Id`, else env `DEFAULT_WORKSPACE_ID`, else the workspace with slug `DEFAULT_WORKSPACE_SLUG` (default `demo`). Every query filters by `workspace_id`, and every id in a body (`type_id`, `group_id`, `parent_id`, ...) must be verified with `assertOwned` (FKs alone don't prevent cross-workspace references). TODO(auth): the header is trusted; replace with real auth + `workspace_members` before exposing beyond localhost.
+- Cursor pagination (`GET /transactions`): `{ data, next_cursor }`, order `occurred_at desc, id desc`, opaque base64url cursor, `limit` default 50 / max 200. Ledger rule violations are 400 `ledger_invalid`; category kind mismatches 400 `category_kind_mismatch`; posting to an archived account 409 `account_archived`.
+- Reports never 500 on missing data: accounts with no FX rate / price get `value_base_minor: null` (balances) or are left out of totals (net-worth) and listed in `missing_rates`.
 - Liability sign: `netWorth` counts a liability account as `-|value|` (works whether the balance is stored owed-positive or ledger-negative).
 
 ## UI
@@ -36,11 +45,13 @@ Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever.
 ## Data model
 
 - Every user-owned table has `workspace_id`.
-- A transaction is a header plus entry lines. Transfer = one transaction, two entries netting to zero when currencies match; cross-currency keeps both amounts. Expense/income have exactly one account entry. Fee = extra entry.
+- A transaction is a header plus entry lines. Transfer = one transaction, two **legs** (entries without `category_id`) netting to zero when currencies match; cross-currency keeps both amounts. Expense/income/adjustment have exactly one entry (expense negative, income positive, adjustment signed; API takes a positive magnitude for expense/income).
+- **Fee lines:** on a transfer, an entry **with** a `category_id` is a fee line (negative, on the source account, expense category). Fee lines are excluded from the zero-sum / leg-count checks in `core.validateTransaction` and in the DB trigger (migration `0002`); legs never carry a category. `POST /transfers {fee_minor, fee_category_id}` creates it.
+- Transactions have `archived_at`; archived and draft transactions are excluded from balances and reports. As-of dates mean end of day Asia/Jakarta.
 - Balance = opening balance + sum(entries).
 - Account `kind` enum (cash|bank|ewallet|investment|liability) is fixed; types, groups, categories are user data.
 - Liabilities count negative in net worth.
-- Posted-transaction integrity is also enforced by a deferred constraint trigger (migration `0001`).
+- Posted-transaction integrity is also enforced by a deferred constraint trigger (migration `0001`, fee-line aware since `0002`). Never edit old migrations; add new ones.
 
 ## Hygiene
 
