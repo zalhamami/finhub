@@ -10,6 +10,7 @@ import { accountsRoutes } from './routes/accounts';
 import { categoriesRoutes } from './routes/categories';
 import { fxRatesRoutes } from './routes/fx-rates';
 import { reportsRoutes } from './routes/reports';
+import { telegramRoutes, type TelegramDeps } from './routes/telegram';
 import { tagsRoutes } from './routes/tags';
 import { transactionsRoutes, transfersRoutes } from './routes/transactions';
 
@@ -20,6 +21,8 @@ export interface AppDeps extends WorkspaceOptions {
   publicDir?: string;
   /** Resolves if the database is reachable. Omit when no DATABASE_URL is configured. */
   pingDb?: () => Promise<void>;
+  /** Telegram webhook (POST /telegram/webhook/:secret). Mounted only when provided. */
+  telegram?: TelegramDeps;
 }
 
 export function createApp(deps: AppDeps = {}): Hono {
@@ -61,6 +64,7 @@ export function createApp(deps: AppDeps = {}): Hono {
     });
   }
   app.route('/api/v1', api);
+  if (deps.telegram) app.route('/telegram', telegramRoutes(deps.telegram));
   if (deps.publicDir && hasPublicDir(deps.publicDir))
     app.use('*', staticMiddleware(deps.publicDir));
 

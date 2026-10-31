@@ -2,14 +2,16 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
+import { createBot } from '@finhub/bot';
 import { createDb } from '@finhub/db';
+import { createBoss, startWorker, stopBoss } from '@finhub/jobs';
 import { migrationsFolder, runMigrations } from '@finhub/db/migrate';
 import { createApp } from './app';
 
 /**
  * ROLE=all    HTTP + worker (default)
  * ROLE=web    HTTP only
- * ROLE=worker no HTTP; background worker only (stub until pg-boss lands)
+ * ROLE=worker no HTTP; background worker only (pg-boss)
  */
 const ROLES = ['all', 'web', 'worker'] as const;
 type Role = (typeof ROLES)[number];
@@ -65,6 +67,12 @@ try {
     console.log('finhub: migrations applied');
   }
 
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const telegram =
+    botToken && webhookSecret ? { bot: createBot(botToken), secret: webhookSecret } : undefined;
+  if (wantsHttp) console.log(`finhub: telegram webhook ${telegram ? 'enabled' : 'disabled'}`);
+
   if (wantsHttp) {
     const app = createApp({
       db: handle?.db,
@@ -72,6 +80,7 @@ try {
       defaultWorkspaceId: process.env.DEFAULT_WORKSPACE_ID || undefined,
       defaultWorkspaceSlug: process.env.DEFAULT_WORKSPACE_SLUG || undefined,
       publicDir,
+      telegram,
     });
     const port = Number(process.env.PORT ?? 3000);
     const server = serve({ fetch: app.fetch, port }, (info) => {
@@ -87,9 +96,14 @@ try {
   }
 
   if (wantsWorker) {
-    // TODO(session 4): replace with pg-boss jobs. For now just hold the role open until SIGTERM.
-    console.log(`finhub worker (ROLE=${role}) started; waiting for SIGTERM`);
-    closers.push(() => console.log('finhub worker stopped'));
+    if (!url) throw new Error('DATABASE_URL is required for the worker (pg-boss)');
+    const boss = createBoss(url);
+    await startWorker(boss);
+    console.log(`finhub worker (ROLE=${role}): pg-boss started (schema pgboss)`);
+    closers.push(async () => {
+      await stopBoss(boss);
+      console.log('finhub worker stopped');
+    });
     if (role === 'worker') setInterval(() => {}, 1 << 30); // keep the event loop alive without HTTP
   }
 } catch (err) {

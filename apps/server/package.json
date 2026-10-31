@@ -15,8 +15,10 @@
     "start:prod": "node dist/index.js"
   },
   "dependencies": {
+    "@finhub/bot": "workspace:*",
     "@finhub/core": "workspace:*",
     "@finhub/db": "workspace:*",
+    "@finhub/jobs": "workspace:*",
     "@hono/node-server": "^1.19.0",
     "drizzle-orm": "^0.45.0",
     "hono": "^4.9.0",
