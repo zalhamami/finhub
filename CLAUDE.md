@@ -15,6 +15,15 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - `pnpm db:generate` (after schema change) · `pnpm db:migrate` · `pnpm db:seed` (need `DATABASE_URL`)
 - DB tests need a real Postgres via `DATABASE_URL`; they use a scratch database.
 
+## API conventions (`apps/server`)
+
+- `createApp({ db })` – the Drizzle client is injected (tests pass a scratch-db client). Routes live in `src/routes/*`, shared helpers in `src/lib/*`.
+- Success: `{ "data": ... }`. Errors: `{ "error": { "code", "message", "details?" } }` – 400 `validation_error`/`invalid_reference`, 404 `not_found`, 409 (`unique_violation`, `foreign_key_violation`, `*_in_use`, `account_has_entries`, ...), 500 `internal_error`. Throw `ApiError`; Postgres 23505/23503 are mapped to 409 automatically.
+- Request bodies/queries are Zod-validated (`v('json'|'query'|'param', schema)`); body schemas are strict (unknown fields -> 400). Wire format is snake_case.
+- **bigint over JSON:** every `*_minor` field is a decimal **string** in responses (JSON numbers lose precision > 2^53). Inputs accept a string or a safe integer (int64 range). Never put a JS number through money math.
+- **Workspace scoping:** `workspaceMiddleware` sets `c.var.workspaceId` from `X-Workspace-Id`, else env `DEFAULT_WORKSPACE_ID`, else the workspace with slug `DEFAULT_WORKSPACE_SLUG` (default `demo`). Every query filters by `workspace_id`, and every id in a body (`type_id`, `group_id`, `parent_id`, ...) must be verified with `assertOwned` (FKs alone don't prevent cross-workspace references). TODO(auth): the header is trusted; replace with real auth + `workspace_members` before exposing beyond localhost.
+- Liability sign: `netWorth` counts a liability account as `-|value|` (works whether the balance is stored owed-positive or ledger-negative).
+
 ## UI
 
 Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever.
