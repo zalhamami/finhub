@@ -1,0 +1,29 @@
+{
+  "name": "finhub",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.6",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @finhub/db db:generate",
+    "db:migrate": "pnpm --filter @finhub/db db:migrate",
+    "db:seed": "pnpm --filter @finhub/db db:seed",
+    "dev": "pnpm --filter @finhub/server dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.0.0"
+  }
+}
