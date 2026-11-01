@@ -4,6 +4,7 @@ import {
   Group,
   Select,
   SegmentedControl,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
@@ -19,6 +20,7 @@ import { zodFormResolver } from '../lib/schemas';
 import {
   NOTE_MAX,
   TX_TYPE_LABEL,
+  newTxForm,
   txFormSchema,
   type TxFormValues,
   type TxPayload,
@@ -47,6 +49,8 @@ export interface TransactionFormProps {
   /** resolves true when saved (the sheet closes or, for "tambah lagi", the form is reset) */
   onSubmit: (payload: TxPayload, addAnother: boolean) => Promise<boolean>;
   onDelete?: () => void;
+  /** clock source for the default time (tests inject a fixed one) */
+  now?: () => Date;
 }
 
 const TYPE_DATA = (['expense', 'income', 'transfer'] as const).map((value) => ({
@@ -67,6 +71,7 @@ export function TransactionForm({
   error,
   onSubmit,
   onDelete,
+  now = () => new Date(),
 }: TransactionFormProps) {
   const form = useForm<TxFormValues>({ initialValues: initial });
   const amountRef = useRef<HTMLInputElement>(null);
@@ -163,7 +168,7 @@ export function TransactionForm({
     setFieldErrors({});
     const ok = await onSubmit(parsed.data, addAnother);
     if (ok && addAnother) {
-      // keep type, accounts, date and fee category; clear the entry-specific bits
+      // keep type, accounts, date and fee category; time resets to now; clear the entry-specific bits
       form.setValues({
         ...form.values,
         amount_text: '',
@@ -172,7 +177,7 @@ export function TransactionForm({
         category_id: '',
         note: '',
         payee: '',
-        time: '',
+        time: newTxForm(now()).time,
       });
       amountRef.current?.focus();
     }
@@ -283,15 +288,15 @@ export function TransactionForm({
           />
         )}
 
-        <Group grow align="flex-start" wrap="nowrap">
+        <SimpleGrid cols={2} spacing="sm" verticalSpacing={0}>
           <DateField
             label="Tanggal"
             value={v.date || null}
             onChange={(d) => form.setFieldValue('date', d ?? '')}
             error={err('date')}
           />
-          <TimeInput label="Jam (opsional)" description="Kosong = sekarang" {...field('time')} />
-        </Group>
+          <TimeInput label="Jam" {...field('time')} />
+        </SimpleGrid>
 
         {v.type !== 'transfer' && (
           <TextInput label="Penerima / toko (opsional)" maxLength={200} {...field('payee')} />

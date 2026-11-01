@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiTransaction } from '../src/lib/api';
 import {
   emptyTxForm,
+  newTxForm,
   groupByDay,
   jakartaDate,
   jakartaTime,
@@ -30,7 +31,6 @@ const ctx: TxFormContext = {
     [C_SALARY, 'income'],
     [C_FEE, 'expense'],
   ]),
-  now: NOW,
 };
 
 const form = (over: Partial<TxFormValues>): TxFormValues => ({
@@ -85,21 +85,34 @@ describe('txFormSchema: payload', () => {
     });
   });
 
-  it('empty time: today uses the current Jakarta time, other days noon', () => {
+  it('payload occurred_at = date + time in Jakarta, also near midnight', () => {
     const base = {
       type: 'expense',
       amount_text: '1rb',
       account_id: A_BCA,
       category_id: C_FOOD,
     } as const;
-    const today = parse({ ...base, date: '2026-11-01' });
-    expect(today.success && (today.data.body as { occurred_at: string }).occurred_at).toBe(
-      '2026-11-01T10:30:15+07:00',
-    );
-    const past = parse({ ...base, date: '2026-10-01' });
-    expect(past.success && (past.data.body as { occurred_at: string }).occurred_at).toBe(
-      '2026-10-01T12:00:00+07:00',
-    );
+    for (const [date, time, at] of [
+      ['2026-11-01', '00:05', '2026-11-01T00:05:00+07:00'],
+      ['2026-10-31', '23:59', '2026-10-31T23:59:00+07:00'],
+    ] as const) {
+      const r = parse({ ...base, date, time });
+      expect(r.success && (r.data.body as { occurred_at: string }).occurred_at).toBe(at);
+    }
+  });
+
+  it('cleared time -> friendly validation error', () => {
+    expect(messages({ amount_text: '1rb', account_id: A_BCA, category_id: C_FOOD, time: '' }).time)
+      .toBe('Jam wajib diisi');
+  });
+
+  it('new form defaults come from the injected clock (Jakarta date + time)', () => {
+    expect(newTxForm(NOW)).toMatchObject({ date: '2026-11-01', time: '10:30' });
+    // 17:30Z is already the next Jakarta day
+    expect(newTxForm(new Date('2026-10-31T17:30:00Z'))).toMatchObject({
+      date: '2026-11-01',
+      time: '00:30',
+    });
   });
 
   it('same-currency transfer without fee: no to_amount, null fee, no payee', () => {

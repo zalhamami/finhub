@@ -12,12 +12,11 @@ import {
   updateTransaction,
 } from '../lib/api';
 import { defaultFeeCategory, indexCategories } from '../lib/categories';
-import { todayJakarta } from '../lib/dates';
 import { friendlyError } from '../lib/errors';
 import { formatMinorCurrency } from '../lib/money';
 import { notifyError, notifySuccess } from '../lib/notify';
 import {
-  emptyTxForm,
+  newTxForm,
   transactionToForm,
   type TxFormValues,
   type TxPayload,
@@ -108,7 +107,7 @@ export default function TransactionSheet({
     if (sheet.mode === 'edit') return transactionToForm(sheet.tx);
     const active = accounts.data.filter((a) => !a.archived_at);
     return {
-      ...emptyTxForm(todayJakarta()),
+      ...newTxForm(),
       account_id: active.length === 1 ? active[0]!.id : '',
       fee_category_id: defaultFeeCategory(categories.data),
     };

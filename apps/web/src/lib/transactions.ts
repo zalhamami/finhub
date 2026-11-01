@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { dayjs } from './dayjs';
 import type { ApiTransaction, CategoryKind, SimpleTxBody, TransferTxBody } from './api';
 import { parseAmountText, minorToInputText } from './amount';
-import { addDays, isClockTime, isIsoDate, jakartaClock, jakartaDate, jakartaTime } from './dates';
+import { addDays, isClockTime, isIsoDate, jakartaDate, jakartaTime } from './dates';
 import { foreignValue, formatMinorCurrency, minorUnitOf, parseMinor } from './money';
 import type { TxType } from './txFilters';
 
@@ -37,13 +37,13 @@ export interface TxFormValues {
   fee_category_id: string;
   /** YYYY-MM-DD, Asia/Jakarta */
   date: string;
-  /** HH:mm or '' */
+  /** HH:mm (required) */
   time: string;
   note: string;
   payee: string;
 }
 
-export const emptyTxForm = (date: string): TxFormValues => ({
+export const emptyTxForm = (date: string, time = ''): TxFormValues => ({
   type: 'expense',
   amount_text: '',
   account_id: '',
@@ -53,17 +53,19 @@ export const emptyTxForm = (date: string): TxFormValues => ({
   fee_text: '',
   fee_category_id: '',
   date,
-  time: '',
+  time,
   note: '',
   payee: '',
 });
+
+/** Defaults for a NEW transaction: today (Jakarta) and the current Jakarta time. */
+export const newTxForm = (now: Date = new Date()): TxFormValues =>
+  emptyTxForm(jakartaDate(now), jakartaTime(now));
 
 /** What validation needs to know about the world. */
 export interface TxFormContext {
   accounts: ReadonlyMap<string, { currency: string }>;
   categories: ReadonlyMap<string, CategoryKind>;
-  /** for the default time of an entry dated today */
-  now?: Date;
 }
 
 export type TxPayload =
@@ -111,15 +113,9 @@ export function txFormSchema(ctx: TxFormContext) {
       // date / time
       if (v.date === '') fail('date', 'Tanggal wajib diisi');
       else if (!isIsoDate(v.date)) fail('date', 'Tanggal tidak valid');
-      if (v.time !== '' && !isClockTime(v.time)) fail('time', 'Jam tidak valid');
-      const now = ctx.now ?? new Date();
-      const clock =
-        v.time !== ''
-          ? `${v.time}:00`
-          : v.date === jakartaDate(now)
-            ? jakartaClock(now)
-            : '12:00:00';
-      const occurred_at = `${v.date}T${clock}+07:00`;
+      if (v.time === '') fail('time', 'Jam wajib diisi');
+      else if (!isClockTime(v.time)) fail('time', 'Jam tidak valid');
+      const occurred_at = `${v.date}T${v.time}:00+07:00`;
       const note = nullIfBlank(v.note);
 
       if (v.type !== 'transfer') {

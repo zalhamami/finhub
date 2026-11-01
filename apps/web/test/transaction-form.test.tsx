@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { describe, expect, it, vi } from 'vitest';
 import { TransactionForm, type TransactionFormProps } from '../src/features/TransactionForm';
 import type { ApiAccount, ApiCategory } from '../src/lib/api';
-import { emptyTxForm } from '../src/lib/transactions';
+import { emptyTxForm, newTxForm } from '../src/lib/transactions';
 import { ThemeRoot } from '../src/theme/AccentProvider';
 
 const A_BCA = '00000000-0000-4000-8000-0000000000a1';
@@ -204,6 +204,37 @@ describe('TransactionForm', () => {
       expect((screen.getByLabelText('Nominal') as HTMLInputElement).value).toBe(''),
     );
     expect(screen.getByRole('combobox', { name: 'Akun' })).toHaveProperty('value', 'BCA');
+  });
+
+  it('"tambah lagi" resets Jam to the then-current time', async () => {
+    const clock = vi.fn(() => new Date('2026-11-01T06:45:00Z')); // 13:45 Jakarta
+    const { onSubmit } = setup({ now: clock });
+    type('Nominal', '50rb');
+    await choose('Akun', /BCA/);
+    await choose('Kategori', 'Makan');
+    expect((screen.getByLabelText('Jam') as HTMLInputElement).value).toBe('09:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan & tambah lagi' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.anything(), true));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Jam') as HTMLInputElement).value).toBe('13:45'),
+    );
+  });
+
+  it('Jam shows a value on open, labelled just "Jam", without the old hint', () => {
+    setup({ initial: newTxForm(new Date('2026-11-01T03:30:00Z')) });
+    expect((screen.getByLabelText('Jam') as HTMLInputElement).value).toBe('10:30');
+    expect(screen.queryByText(/Kosong = sekarang/)).toBeNull();
+  });
+
+  it('cleared Jam blocks submit with a friendly message', async () => {
+    const { onSubmit } = setup();
+    type('Nominal', '50rb');
+    await choose('Akun', /BCA/);
+    await choose('Kategori', 'Makan');
+    type('Jam', '');
+    fireEvent.click(screen.getByRole('button', { name: 'Simpan' }));
+    expect(await screen.findByText('Jam wajib diisi')).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('edit mode: prefilled, type locked, no "tambah lagi", delete available', () => {

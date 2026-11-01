@@ -68,7 +68,6 @@ describe('payload builders use the account currency', () => {
     const r = txFormSchema({
       accounts: new Map([['usd', { currency: 'USD' }]]),
       categories: new Map([['c', 'expense' as const]]),
-      now: new Date('2026-03-01T05:00:00Z'),
     }).parse({
       type: 'expense',
       amount_text: '9,99',
@@ -79,7 +78,7 @@ describe('payload builders use the account currency', () => {
       fee_text: '',
       fee_category_id: '',
       date: '2026-03-01',
-      time: '',
+      time: '12:00',
       note: '',
       payee: '',
     });
