@@ -1,6 +1,6 @@
 import { ApiRequestError } from './api';
 
-export type ErrorContext = 'account' | 'account-type' | 'category' | 'generic';
+export type ErrorContext = 'account' | 'account-type' | 'category' | 'transaction' | 'generic';
 
 const BY_CODE: Record<string, string> = {
   account_has_entries:
@@ -19,9 +19,24 @@ const BY_CODE: Record<string, string> = {
   validation_error: 'Isian belum valid. Periksa kembali formulir.',
 };
 
+/** Codes whose wording depends on where they happened. */
+const BY_CONTEXT: Partial<Record<ErrorContext, Record<string, string>>> = {
+  transaction: {
+    ledger_invalid:
+      'Transaksi tidak seimbang atau tidak lengkap. Periksa akun, nominal, dan biaya transfer.',
+    category_kind_mismatch:
+      'Kategori tidak cocok dengan jenis transaksi. Pilih kategori pengeluaran untuk pengeluaran dan kategori pemasukan untuk pemasukan.',
+    account_archived: 'Akun ini sudah diarsipkan. Pilih akun lain atau aktifkan kembali akunnya.',
+    invalid_reference:
+      'Akun atau kategori yang dipilih tidak ditemukan. Muat ulang halaman lalu pilih lagi.',
+    not_found: 'Transaksi ini sudah tidak ada. Muat ulang daftar transaksi.',
+  },
+};
+
 /** API error -> Indonesian message for the user. Unknown codes fall back to a generic text. */
-export function friendlyError(err: unknown, _context: ErrorContext = 'generic'): string {
+export function friendlyError(err: unknown, context: ErrorContext = 'generic'): string {
   if (err instanceof ApiRequestError) {
+    if (err.code && BY_CONTEXT[context]?.[err.code]) return BY_CONTEXT[context]![err.code]!;
     if (err.code && BY_CODE[err.code]) return BY_CODE[err.code]!;
     if (err.status === 409)
       return 'Tindakan ini bentrok dengan data yang ada. Muat ulang lalu coba lagi.';

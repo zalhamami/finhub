@@ -206,3 +206,92 @@ export const setCategoryArchived = (id: string, archived: boolean) =>
   send<ApiCategory>('POST', `/api/v1/categories/${id}/${archived ? 'archive' : 'unarchive'}`);
 export const deleteCategory = (id: string) =>
   send<{ id: string }>('DELETE', `/api/v1/categories/${id}`);
+
+/* ---------- transactions ---------- */
+
+export type TxKind = 'expense' | 'income' | 'transfer' | 'adjustment';
+export interface ApiEntry {
+  id: string;
+  account_id: string;
+  category_id: string | null;
+  /** signed minor units (decimal string): expense negative, income positive */
+  amount_minor: string;
+  currency: string;
+  fx_rate: string | null;
+  /** transfer fee line (entry with a category on a transfer) */
+  is_fee: boolean;
+}
+export interface ApiTransaction {
+  id: string;
+  occurred_at: string;
+  kind: TxKind;
+  payee: string | null;
+  note: string | null;
+  status: 'posted' | 'draft';
+  source: string;
+  archived_at: string | null;
+  entries: ApiEntry[];
+  tag_ids: string[];
+}
+export interface TransactionPage {
+  data: ApiTransaction[];
+  next_cursor: string | null;
+}
+
+/** POST /transactions body (expense / income). The magnitude is positive; the server signs it. */
+export interface SimpleTxBody {
+  kind: 'expense' | 'income';
+  account_id: string;
+  amount_minor: string;
+  category_id: string;
+  occurred_at: string;
+  note: string | null;
+  payee: string | null;
+}
+/** POST /transfers body. */
+export interface TransferTxBody {
+  from_account_id: string;
+  to_account_id: string;
+  amount_minor: string;
+  to_amount_minor: string | null;
+  fee_minor: string | null;
+  fee_category_id: string | null;
+  occurred_at: string;
+  note: string | null;
+}
+
+/** Cursor-paged list: `query` is a ready query string (see lib/txFilters filtersToApiQuery). */
+export async function fetchTransactionPage(query: string): Promise<TransactionPage> {
+  const res = await fetch(`/api/v1/transactions?${query}`, {
+    headers: { accept: 'application/json' },
+  });
+  let body:
+    | {
+        data?: ApiTransaction[];
+        next_cursor?: string | null;
+        error?: { code?: string; message?: string };
+      }
+    | undefined;
+  try {
+    body = await res.json();
+  } catch {
+    // non-JSON error body
+  }
+  if (!res.ok || !body?.data) {
+    throw new ApiRequestError(
+      body?.error?.message ?? `Permintaan gagal (${res.status})`,
+      res.status,
+      body?.error?.code,
+    );
+  }
+  return { data: body.data, next_cursor: body.next_cursor ?? null };
+}
+export const createTransaction = (body: SimpleTxBody) =>
+  send<ApiTransaction>('POST', '/api/v1/transactions', body);
+export const createTransfer = (body: TransferTxBody) =>
+  send<ApiTransaction>('POST', '/api/v1/transfers', body);
+/** Edit never changes the kind, so `kind` is stripped for simple transactions. */
+export const updateTransaction = (id: string, body: Omit<SimpleTxBody, 'kind'> | TransferTxBody) =>
+  send<ApiTransaction>('PATCH', `/api/v1/transactions/${id}`, body);
+export const deleteTransaction = (id: string) =>
+  send<{ id: string }>('DELETE', `/api/v1/transactions/${id}`);
