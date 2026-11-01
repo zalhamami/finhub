@@ -180,6 +180,24 @@ describe.skipIf(!DATABASE_URL)('reports', () => {
     ]);
   });
 
+  it('net-worth: per-account rows include holdings and sum to the kind totals', async () => {
+    const r = await A('GET', '/reports/net-worth?as_of=2026-03-01');
+    const rows = r.data.accounts as {
+      id: string;
+      kind: string;
+      value_base_minor: string | null;
+    }[];
+    const row = (id: string) => rows.find((x) => x.id === id)!;
+    expect(row(broker).value_base_minor).toBe('1500000'); // 10 units x 1500, no cash balance
+    expect(row(card).value_base_minor).toBe('-3000000');
+    expect(row(sgd).value_base_minor).toBeNull(); // missing rate
+    const sums: Record<string, bigint> = {};
+    for (const x of rows) sums[x.kind] = (sums[x.kind] ?? 0n) + BigInt(x.value_base_minor ?? 0);
+    for (const [kind, total] of Object.entries(r.data.by_kind as Record<string, string>)) {
+      expect(sums[kind] ?? 0n).toBe(BigInt(total));
+    }
+  });
+
   it('net-worth: price as of date; missing price is reported instead of failing', async () => {
     const jan = await A('GET', '/reports/net-worth?as_of=2026-01-15');
     // price 1000 on 2026-01-01 -> 10 x 1000 = 10,000 IDR = 1,000,000 minor; USD rate not yet available

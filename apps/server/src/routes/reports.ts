@@ -160,6 +160,22 @@ export function reportsRoutes(): Hono<AppEnv> {
       liabilities_minor: nw.liabilitiesMinor,
       net_worth_minor: nw.netWorthMinor,
       by_kind: nw.byKind,
+      /**
+       * Per-account base value including holdings (liabilities negative); rows sum to by_kind.
+       * Accounts that cannot be valued (no rate / price) are listed with value_base_minor null.
+       */
+      accounts: counted
+        .map((a) => ({
+          id: a.id,
+          name: a.name,
+          kind: a.kind,
+          group_id: a.groupId,
+          currency: a.currency,
+          sort_order: a.sortOrder,
+          value_base_minor: nw.perAccount[a.id] ?? null,
+        }))
+        .sort((x, y) => x.sort_order - y.sort_order || x.name.localeCompare(y.name))
+        .map(({ sort_order: _s, ...rest }) => rest),
       missing_rates: missing,
     });
   });

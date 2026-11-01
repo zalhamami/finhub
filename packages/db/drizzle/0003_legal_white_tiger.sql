@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "accent" text DEFAULT 'amber' NOT NULL;

@@ -10,6 +10,7 @@ import { accountsRoutes } from './routes/accounts';
 import { categoriesRoutes } from './routes/categories';
 import { fxRatesRoutes } from './routes/fx-rates';
 import { reportsRoutes } from './routes/reports';
+import { settingsRoutes } from './routes/settings';
 import { telegramRoutes, type TelegramDeps } from './routes/telegram';
 import { tagsRoutes } from './routes/tags';
 import { transactionsRoutes, transfersRoutes } from './routes/transactions';
@@ -58,6 +59,7 @@ export function createApp(deps: AppDeps = {}): Hono {
     mount('/transfers', transfersRoutes());
     mount('/fx-rates', fxRatesRoutes());
     mount('/reports', reportsRoutes());
+    mount('/settings', settingsRoutes());
   } else {
     api.all('*', () => {
       throw new ApiError(503, 'db_not_configured', 'DATABASE_URL is not configured');

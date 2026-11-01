@@ -127,6 +127,8 @@ export const settings = pgTable(
     locale: text('locale').notNull().default('id'),
     monthStartDay: integer('month_start_day').notNull().default(1),
     timezone: text('timezone').notNull().default('Asia/Jakarta'),
+    /** UI accent: a preset name (amber|jade|indigo) or a #rrggbb custom color */
+    accent: text('accent').notNull().default('amber'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
