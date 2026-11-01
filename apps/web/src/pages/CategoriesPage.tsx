@@ -28,6 +28,7 @@ import {
 import { moveItem } from '../lib/accounts';
 import { CATEGORY_KIND_LABEL, flattenCategories, type CategoryRow } from '../lib/categories';
 import { friendlyError } from '../lib/errors';
+import { notifyError, notifySuccess } from '../lib/notify';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ResponsiveFormSheet } from '../ui/ResponsiveFormSheet';
 
@@ -67,16 +68,26 @@ export function CategoriesPage() {
     onSuccess: async () => {
       await refresh();
       closeSheet();
+      notifySuccess(sheet?.mode === 'edit' ? 'Kategori diperbarui' : 'Kategori ditambahkan');
     },
-    onError: (e) => setFormError(friendlyError(e, 'category')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'category');
+      setFormError(msg);
+      notifyError(msg);
+    },
   });
   const archive = useMutation({
     mutationFn: (c: ApiCategory) => setCategoryArchived(c.id, c.archived_at === null),
-    onSuccess: async () => {
+    onSuccess: async (_d, c) => {
       await refresh();
       closeSheet();
+      notifySuccess(c.archived_at === null ? 'Kategori diarsipkan' : 'Kategori diaktifkan kembali');
     },
-    onError: (e) => setFormError(friendlyError(e, 'category')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'category');
+      setFormError(msg);
+      notifyError(msg);
+    },
   });
   const remove = useMutation({
     mutationFn: (c: ApiCategory) => deleteCategory(c.id),
@@ -84,8 +95,13 @@ export function CategoriesPage() {
       await refresh();
       setConfirmDelete(null);
       closeSheet();
+      notifySuccess('Kategori dihapus');
     },
-    onError: (e) => setDeleteError(friendlyError(e, 'category')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'category');
+      setDeleteError(msg);
+      notifyError(msg);
+    },
   });
   const reorder = useMutation({
     // No bulk endpoint for categories: patch only the siblings whose position changed.

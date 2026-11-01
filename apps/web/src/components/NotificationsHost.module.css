@@ -1,0 +1,10 @@
+/* Mobile top toasts sit below the notch; desktop bottom toasts need no extra offset. */
+.root {
+  margin-top: var(--safe-top);
+}
+
+@media (min-width: 48em) {
+  .root {
+    margin-top: 0;
+  }
+}

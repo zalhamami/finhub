@@ -72,6 +72,11 @@ Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `po
 - One add/edit sheet for the whole app: `features/TransactionSheetContext.tsx` (`useTransactionSheet().openCreate/openEdit`; lazy-loads `TransactionSheet`, which owns queries, mutations, invalidation of `transactions`/`accounts`/`reports`, delete confirm). `TransactionForm` is presentational. Entry points: `Layout` header button, the center Tambah tab in `BottomTabs`, desktop key "n" via `lib/shortcuts.ts`. Edit cannot change the type (the API has no kind patch).
 - Date pickers: `ui/dates.tsx` (`@mantine/dates`, values are `YYYY-MM-DD` strings, locale `id`); its own `vendor-dates` chunk.
 
+### Toasts and mobile inputs
+
+- Toasts: `@mantine/notifications` via `lib/notify.ts` (`notifySuccess(title, message?)`, `notifyError(message)`; sage `income` / clay `expense`). Config is in `components/NotificationsHost` (mounted in `main.tsx`): top-center below `--safe-top` on mobile, bottom-right from `sm`, limit 3, 3 s, zIndex 1000 (above Modal/Drawer and the tab bar at 100). Mutations toast on success/error (transactions in `TransactionSheet`, plus accounts/categories/account types pages); inline form errors stay.
+- iOS zoom guard: `theme/variables.css` forces `font-size: max(16px, 1rem)` on inputs under `(max-width: 47.99em), (pointer: coarse)`; desktop unchanged. Never add `maximum-scale`/`user-scalable` to the viewport meta (tested in `mobile-input-size.test.ts`).
+
 ### How to change colors
 
 All colors live in ONE file: `apps/web/src/theme/tokens.ts` (accent palettes `amber`/`jade`/`indigo`, `income` sage, `overspend` clay, `neutralDark`, light/dark `surfaces`, `shadows`).

@@ -50,6 +50,7 @@ import {
   type AccountSection,
 } from '../lib/accounts';
 import { friendlyError } from '../lib/errors';
+import { notifyError, notifySuccess } from '../lib/notify';
 import { colorVar } from '../lib/palette';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { EntityIcon } from '../ui/EntityIcon';
@@ -95,16 +96,26 @@ export function AccountsPage() {
     onSuccess: async () => {
       await refresh();
       closeSheet();
+      notifySuccess(sheet?.mode === 'edit' ? 'Akun diperbarui' : 'Akun ditambahkan');
     },
-    onError: (e) => setFormError(friendlyError(e, 'account')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'account');
+      setFormError(msg);
+      notifyError(msg);
+    },
   });
   const archive = useMutation({
     mutationFn: (a: ApiAccount) => setAccountArchived(a.id, a.archived_at === null),
-    onSuccess: async () => {
+    onSuccess: async (_d, a) => {
       await refresh();
       closeSheet();
+      notifySuccess(a.archived_at === null ? 'Akun diarsipkan' : 'Akun diaktifkan kembali');
     },
-    onError: (e) => setFormError(friendlyError(e, 'account')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'account');
+      setFormError(msg);
+      notifyError(msg);
+    },
   });
   const remove = useMutation({
     mutationFn: (a: ApiAccount) => deleteAccount(a.id),
@@ -112,8 +123,13 @@ export function AccountsPage() {
       await refresh();
       setConfirmDelete(null);
       closeSheet();
+      notifySuccess('Akun dihapus');
     },
-    onError: (e) => setDeleteError(friendlyError(e, 'account')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'account');
+      setDeleteError(msg);
+      notifyError(msg);
+    },
   });
   const reorder = useMutation({
     mutationFn: reorderAccounts,

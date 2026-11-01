@@ -11,9 +11,11 @@ import {
   fetchCategories,
   updateTransaction,
 } from '../lib/api';
-import { defaultFeeCategory } from '../lib/categories';
+import { defaultFeeCategory, indexCategories } from '../lib/categories';
 import { todayJakarta } from '../lib/dates';
 import { friendlyError } from '../lib/errors';
+import { formatMinorCurrency } from '../lib/money';
+import { notifyError, notifySuccess } from '../lib/notify';
 import {
   emptyTxForm,
   transactionToForm,
@@ -80,8 +82,13 @@ export default function TransactionSheet({
       await refresh();
       setConfirmDelete(false);
       onClose();
+      notifySuccess('Transaksi dihapus');
     },
-    onError: (e) => setDeleteError(friendlyError(e, 'transaction')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'transaction');
+      setDeleteError(msg);
+      notifyError(msg);
+    },
   });
 
   // Own-currency balance per account, plus the base-currency value (null = no FX rate).
@@ -113,15 +120,37 @@ export default function TransactionSheet({
     onClose();
   };
 
+  /** "<amount in the account currency> · <category>" or "<amount> · <from> → <to>". */
+  const describeSaved = (payload: TxPayload): string => {
+    const accs = accounts.data ?? [];
+    const name = (id: string) => accs.find((a) => a.id === id)?.name ?? '';
+    const currency = (id: string) => accs.find((a) => a.id === id)?.currency ?? 'IDR';
+    if (payload.type === 'transfer') {
+      const b = payload.body;
+      const amount = formatMinorCurrency(b.amount_minor, currency(b.from_account_id));
+      return `${amount} · ${name(b.from_account_id)} → ${name(b.to_account_id)}`;
+    }
+    const b = payload.body;
+    const amount = formatMinorCurrency(b.amount_minor, currency(b.account_id));
+    const category = categories.data
+      ? (indexCategories(categories.data).get(b.category_id)?.name ?? '')
+      : '';
+    return `${amount} · ${category}`;
+  };
+
   const submit = async (payload: TxPayload, addAnother: boolean) => {
     setError(null);
     try {
       await save.mutateAsync(payload);
       await refresh();
+      if (sheet.mode === 'edit') notifySuccess('Transaksi diperbarui');
+      else notifySuccess('Transaksi tersimpan', describeSaved(payload));
       if (!addAnother) close();
       return true;
     } catch (e) {
-      setError(friendlyError(e, 'transaction'));
+      const msg = friendlyError(e, 'transaction');
+      setError(msg);
+      notifyError(msg);
       return false;
     }
   };

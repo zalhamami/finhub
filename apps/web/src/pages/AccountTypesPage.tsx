@@ -25,6 +25,7 @@ import {
   type ApiAccountType,
 } from '../lib/api';
 import { friendlyError } from '../lib/errors';
+import { notifyError, notifySuccess } from '../lib/notify';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { EntityIcon } from '../ui/EntityIcon';
 import { ResponsiveFormSheet } from '../ui/ResponsiveFormSheet';
@@ -64,8 +65,13 @@ export function AccountTypesPage() {
     onSuccess: async () => {
       await refresh();
       closeSheet();
+      notifySuccess(sheet?.mode === 'edit' ? 'Jenis akun diperbarui' : 'Jenis akun ditambahkan');
     },
-    onError: (e) => setFormError(friendlyError(e, 'account-type')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'account-type');
+      setFormError(msg);
+      notifyError(msg);
+    },
   });
   const remove = useMutation({
     mutationFn: (t: ApiAccountType) => deleteAccountType(t.id),
@@ -73,8 +79,13 @@ export function AccountTypesPage() {
       await refresh();
       setConfirmDelete(null);
       closeSheet();
+      notifySuccess('Jenis akun dihapus');
     },
-    onError: (e) => setDeleteError(friendlyError(e, 'account-type')),
+    onError: (e) => {
+      const msg = friendlyError(e, 'account-type');
+      setDeleteError(msg);
+      notifyError(msg);
+    },
   });
 
   return (
