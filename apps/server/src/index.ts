@@ -82,6 +82,13 @@ try {
     botToken && webhookSecret ? { bot: createBot(botToken), secret: webhookSecret } : undefined;
   if (wantsHttp) console.log(`finhub: telegram webhook ${telegram ? 'enabled' : 'disabled'}`);
 
+  // Optional shared-password gate (HTTP Basic) for an internet-exposed demo; the value is never logged.
+  const accessPassword = process.env.FINHUB_ACCESS_PASSWORD ?? '';
+  const accessGate = accessPassword
+    ? { user: process.env.FINHUB_ACCESS_USER || 'demo', password: accessPassword }
+    : undefined;
+  if (wantsHttp) console.log(`finhub: access gate ${accessGate ? 'ON' : 'off'}`);
+
   if (wantsHttp) {
     const app = createApp({
       db: handle?.db,
@@ -90,6 +97,7 @@ try {
       defaultWorkspaceSlug: process.env.DEFAULT_WORKSPACE_SLUG || undefined,
       publicDir,
       telegram,
+      accessGate,
     });
     const port = Number(process.env.PORT ?? 3000);
     const server = serve({ fetch: app.fetch, port }, (info) => {

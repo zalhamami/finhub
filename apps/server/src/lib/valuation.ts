@@ -6,6 +6,12 @@ import type {
   PricePoint,
   ValuationContext,
 } from '@finhub/core';
+import {
+  accountValueBase,
+  netWorth,
+  type NetWorthAccount,
+  type NetWorthResult,
+} from '@finhub/core';
 import { schema, type Db } from '@finhub/db';
 import { jakartaEndExclusive } from './time';
 
@@ -33,8 +39,8 @@ export interface Valuation {
   accounts: AccountBalance[];
 }
 
-/** Balances are summed in SQL (bigint); conversion happens in @finhub/core. */
-export async function loadValuation(db: Db, ws: string, asOf: string): Promise<Valuation> {
+/** Base currency, currency units and fx rates on/before `asOf` (the valuation context minus prices). */
+export async function loadFxContext(db: Db, ws: string, asOf: string): Promise<ValuationContext> {
   const [settings] = await db
     .select({ base: schema.settings.baseCurrency })
     .from(schema.settings)
@@ -58,6 +64,14 @@ export async function loadValuation(db: Db, ws: string, asOf: string): Promise<V
     .where(and(eq(schema.fxRates.workspaceId, ws), lte(schema.fxRates.date, asOf)))
     // ties on the same date resolve to the most recently written rate (core keeps the first seen)
     .orderBy(desc(schema.fxRates.date), desc(schema.fxRates.updatedAt));
+
+  return { baseCurrency, date: asOf, currencies, fxRates, prices: [] };
+}
+
+/** Balances are summed in SQL (bigint); conversion happens in @finhub/core. */
+export async function loadValuation(db: Db, ws: string, asOf: string): Promise<Valuation> {
+  const ctx = await loadFxContext(db, ws, asOf);
+  const baseCurrency = ctx.baseCurrency;
 
   const rows = await db
     .select({
@@ -109,7 +123,7 @@ export async function loadValuation(db: Db, ws: string, asOf: string): Promise<V
   return {
     asOf,
     baseCurrency,
-    ctx: { baseCurrency, date: asOf, currencies, fxRates, prices: [] },
+    ctx,
     accounts,
   };
 }
@@ -150,4 +164,45 @@ export async function loadHoldings(db: Db, ws: string, accountIds: string[], asO
         .orderBy(desc(schema.prices.date), desc(schema.prices.updatedAt))
     : [];
   return { holdings, prices };
+}
+
+/**
+ * Net worth over the counted accounts (not archived, include_in_net_worth). An account that cannot be
+ * valued (no fx rate / price) is left out of the totals and returned in `failed` with the error.
+ */
+export function valueNetWorth(
+  accounts: readonly AccountBalance[],
+  holdings: ReadonlyMap<string, HoldingInput[]>,
+  ctx: ValuationContext,
+): {
+  nw: NetWorthResult;
+  counted: AccountBalance[];
+  failed: { account: AccountBalance; err: unknown }[];
+} {
+  const counted = accounts.filter((a) => !a.archived && a.includeInNetWorth);
+  const usable: NetWorthAccount[] = [];
+  const failed: { account: AccountBalance; err: unknown }[] = [];
+  for (const a of counted) {
+    const na: NetWorthAccount = {
+      id: a.id,
+      kind: a.kind,
+      currency: a.currency,
+      balanceMinor: a.balanceMinor,
+      includeInNetWorth: true,
+      archived: false,
+      holdings: a.hasHoldings ? (holdings.get(a.id) ?? []) : [],
+    };
+    try {
+      accountValueBase(
+        na.balanceMinor,
+        na.currency,
+        na.kind === 'investment' ? (na.holdings ?? []) : [],
+        ctx,
+      );
+      usable.push(na);
+    } catch (err) {
+      failed.push({ account: a, err });
+    }
+  }
+  return { nw: netWorth(usable, ctx), counted, failed };
 }

@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Db } from '@finhub/db';
+import { accessGate, type AccessGate } from './lib/access-gate';
 import { ApiError, onError, onNotFound } from './lib/errors';
 import { hasPublicDir, staticMiddleware } from './lib/static';
 import type { AppEnv } from './lib/http';
@@ -25,10 +26,16 @@ export interface AppDeps extends WorkspaceOptions {
   pingDb?: () => Promise<void>;
   /** Telegram webhook (POST /telegram/webhook/:secret). Mounted only when provided. */
   telegram?: TelegramDeps;
+  /** Optional shared-password HTTP Basic gate over every route except /healthz and the Telegram webhook. */
+  accessGate?: AccessGate;
+  /** Clock (tests). Defaults to the system time. */
+  now?: () => Date;
 }
 
 export function createApp(deps: AppDeps = {}): Hono {
   const app = new Hono();
+  // First middleware: nothing below (API, webhook, static files) is reachable without passing it.
+  if (deps.accessGate?.password) app.use('*', accessGate(deps.accessGate));
 
   const health = async (c: import('hono').Context) => {
     if (!deps.pingDb) return c.json({ status: 'ok' });
@@ -60,7 +67,7 @@ export function createApp(deps: AppDeps = {}): Hono {
     mount('/transactions', transactionsRoutes());
     mount('/transfers', transfersRoutes());
     mount('/fx-rates', fxRatesRoutes());
-    mount('/reports', reportsRoutes());
+    mount('/reports', reportsRoutes({ now: deps.now }));
     mount('/settings', settingsRoutes());
   } else {
     api.all('*', () => {

@@ -31,6 +31,9 @@ services:
       PORT: '3000'
       # true = seed fake demo data once at startup (no-op if the demo workspace already has accounts)
       DEMO_SEED: ${DEMO_SEED:-false}
+      # Optional shared-password gate (HTTP Basic) for a public demo; empty = off. Not real auth.
+      FINHUB_ACCESS_PASSWORD: ${FINHUB_ACCESS_PASSWORD:-}
+      FINHUB_ACCESS_USER: ${FINHUB_ACCESS_USER:-demo}
     ports:
       - '127.0.0.1:3000:3000'
     depends_on:
