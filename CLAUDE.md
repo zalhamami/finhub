@@ -36,12 +36,23 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - **bigint over JSON:** every `*_minor` field is a decimal **string** in responses (JSON numbers lose precision > 2^53). Inputs accept a string or a safe integer (int64 range). Never put a JS number through money math.
 - **Workspace scoping:** `workspaceMiddleware` sets `c.var.workspaceId` from `X-Workspace-Id`, else env `DEFAULT_WORKSPACE_ID`, else the workspace with slug `DEFAULT_WORKSPACE_SLUG` (default `demo`). Every query filters by `workspace_id`, and every id in a body (`type_id`, `group_id`, `parent_id`, ...) must be verified with `assertOwned` (FKs alone don't prevent cross-workspace references). TODO(auth): the header is trusted; replace with real auth + `workspace_members` before exposing beyond localhost.
 - Cursor pagination (`GET /transactions`): `{ data, next_cursor }`, order `occurred_at desc, id desc`, opaque base64url cursor, `limit` default 50 / max 200. Ledger rule violations are 400 `ledger_invalid`; category kind mismatches 400 `category_kind_mismatch`; posting to an archived account 409 `account_archived`.
+- `GET/PATCH /settings`: `{ base_currency, locale, month_start_day, timezone, accent }`; only `accent` (preset name or `#rrggbb`, lowercased) is writable; a workspace without a row reads defaults and PATCH upserts.
+- `GET /reports/net-worth` also returns `accounts[]` (per-account `value_base_minor` incl. holdings, liabilities negative, null if unvalued); rows sum to `by_kind`. The net worth page renders from it.
 - Reports never 500 on missing data: accounts with no FX rate / price get `value_base_minor: null` (balances) or are left out of totals (net-worth) and listed in `missing_rates`.
 - Liability sign: `netWorth` counts a liability account as `-|value|` (works whether the balance is stored owed-positive or ledger-negative).
 
 ## UI
 
-Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `postcss-preset-mantine` (+ `postcss-simple-vars`). Theme in `apps/web/src/theme/theme.ts` (amber primary, dark text on fills; sage income, clay expense), globals in `theme/variables.css`. Icons: Tabler, stroke 1.75. UI copy is Indonesian; dayjs locale `id`. Money from the API is a bigint string: `lib/money.ts` -> core `formatIDR`, never `Number`.
+Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `postcss-preset-mantine` (+ `postcss-simple-vars`). Theme in `apps/web/src/theme/theme.ts` (built from `theme/tokens.ts`; sage income, clay only for overspend), globals in `theme/variables.css`. Icons: Tabler, stroke 1.75. UI copy is Indonesian; dayjs locale `id`. Money from the API is a bigint string: `lib/money.ts` -> core `formatIDR`, never `Number`.
+
+### How to change colors
+
+All colors live in ONE file: `apps/web/src/theme/tokens.ts` (accent palettes `amber`/`jade`/`indigo`, `income` sage, `overspend` clay, `neutralDark`, light/dark `surfaces`, `shadows`).
+- **Change the default accent: edit `DEFAULT_ACCENT` in tokens.ts (one line).** The user's choice (Pengaturan > Warna aksen) overrides it, stored in `settings.accent` and cached in localStorage (`finhub.accent`).
+- Add a preset: new 10-shade tuple + `ACCENT_PRESETS` entry in tokens.ts, and the name in `apps/server/src/routes/settings.ts`.
+- `createFinhubTheme({ accent })` (theme.ts) builds the Mantine theme; `cssVariablesResolver` emits `--finhub-*` (page-bg, surface, chrome, border, text-muted, amount-negative) and re-points Mantine's body/border/dimmed. Components use `var(--finhub-*)` or `var(--mantine-primary-color-N)`, never literals. Custom hex accents go through `generateScale` (theme/accent.ts); text on fills is picked by luminance (dark on amber, white on jade/indigo; keep `autoContrast`).
+- **No-hardcoded-color guard:** `apps/web/test/no-hardcoded-colors.test.ts` fails on hex / `rgb()` / `hsl()` etc. literals in `apps/web/src/**/*.{ts,tsx,css}` except `theme/tokens.ts`.
+- **Clay (`overspend`, Mantine color `expense`) is reserved for overspending only** (budget over limit). Liabilities, ordinary expenses and error states use neutral text (`Amount tone="neutral"`); the minus sign is enough.
 
 ## Money & numbers
 

@@ -1,7 +1,7 @@
 import { Card, Stack, Text, Title } from '@mantine/core';
 import { IconClockHour4 } from '@tabler/icons-react';
 
-export function PlaceholderPage({ title }: { title: string }) {
+function PlaceholderPage({ title }: { title: string }) {
   return (
     <Stack gap="md">
       <Title order={2}>{title}</Title>
@@ -17,3 +17,7 @@ export function PlaceholderPage({ title }: { title: string }) {
     </Stack>
   );
 }
+
+export const BerandaPage = () => <PlaceholderPage title="Beranda" />;
+export const TransaksiPage = () => <PlaceholderPage title="Transaksi" />;
+export const AkunPage = () => <PlaceholderPage title="Akun" />;

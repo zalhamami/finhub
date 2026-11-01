@@ -14,7 +14,7 @@ import { IconMoon, IconPlus, IconSun } from '@tabler/icons-react';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { BottomTabs } from './BottomTabs';
 import classes from './Layout.module.css';
-import { SIDEBAR_ITEMS } from './nav';
+import { SIDEBAR_ITEMS, isActivePath } from './nav';
 
 function ColorSchemeToggle() {
   const { setColorScheme } = useMantineColorScheme();
@@ -67,7 +67,7 @@ export function Layout() {
             to={to}
             label={label}
             leftSection={<Icon size={20} stroke={1.75} />}
-            active={to === '/' ? pathname === '/' : pathname.startsWith(to)}
+            active={isActivePath(to, pathname)}
             variant="light"
             className={classes.navLink}
           />
@@ -83,7 +83,6 @@ export function Layout() {
       <BottomTabs />
       <ActionIcon
         variant="filled"
-        color="amber"
         size="xl"
         radius="xl"
         aria-label="Tambah transaksi"

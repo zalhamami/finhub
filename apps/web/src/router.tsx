@@ -3,27 +3,38 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   type RouterHistory,
 } from '@tanstack/react-router';
 import { Layout } from './components/Layout';
-import { NetWorthPage } from './pages/NetWorthPage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
 
 const rootRoute = createRootRoute({ component: Layout });
 
-const page = (path: string, title: string) =>
+// Pages are lazy chunks; only the shell (Layout) is in the entry bundle.
+const placeholder = (path: string, title: string) =>
   createRoute({
     getParentRoute: () => rootRoute,
     path,
-    component: () => <PlaceholderPage title={title} />,
+    component: lazyRouteComponent(
+      () => import('./pages/PlaceholderPage'),
+      `${title}Page` as 'BerandaPage',
+    ),
   });
 
 const routeTree = rootRoute.addChildren([
-  createRoute({ getParentRoute: () => rootRoute, path: '/', component: NetWorthPage }),
-  page('/beranda', 'Beranda'),
-  page('/transaksi', 'Transaksi'),
-  page('/akun', 'Akun'),
-  page('/pengaturan', 'Pengaturan'),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: lazyRouteComponent(() => import('./pages/NetWorthPage'), 'NetWorthPage'),
+  }),
+  placeholder('/beranda', 'Beranda'),
+  placeholder('/transaksi', 'Transaksi'),
+  placeholder('/akun', 'Akun'),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/pengaturan',
+    component: lazyRouteComponent(() => import('./pages/SettingsPage'), 'SettingsPage'),
+  }),
 ]);
 
 export const createAppRouter = (history?: RouterHistory) =>

@@ -9,6 +9,12 @@
   color: light-dark(var(--mantine-color-income-8), var(--mantine-color-income-4));
 }
 
+/* Negative but not overspending (e.g. liabilities): plain text color, the minus sign is enough. */
+.neutral {
+  color: var(--finhub-amount-negative);
+}
+
+/* Clay: overspending only (budgets over limit). Never liabilities or ordinary expenses. */
 .over {
   color: light-dark(var(--mantine-color-expense-7), var(--mantine-color-expense-4));
 }

@@ -3,14 +3,13 @@ import { IconAlertCircle, IconWallet } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { Amount } from '../components/Amount';
 import {
-  fetchBalancesByKind,
   fetchNetWorth,
   type AccountKind,
-  type BalancesReport,
+  type NetWorthAccount,
   type NetWorthReport,
 } from '../lib/api';
 import { dayjs } from '../lib/dayjs';
-import { asLiability, parseMinor } from '../lib/money';
+import { parseMinor } from '../lib/money';
 import classes from './NetWorthPage.module.css';
 
 export const KIND_LABEL: Record<AccountKind, string> = {
@@ -21,20 +20,15 @@ export const KIND_LABEL: Record<AccountKind, string> = {
   liability: 'Liabilitas',
 };
 
-const asKind = (k: string | null): AccountKind | null =>
-  k !== null && k in KIND_LABEL ? (k as AccountKind) : null;
+const ASSET_KINDS = ['cash', 'bank', 'ewallet', 'investment'] as const;
 
 export function NetWorthPage() {
   const netWorth = useQuery({ queryKey: ['reports', 'net-worth'], queryFn: fetchNetWorth });
-  const balances = useQuery({
-    queryKey: ['reports', 'balances', 'kind'],
-    queryFn: fetchBalancesByKind,
-  });
 
-  if (netWorth.isError || balances.isError) {
+  if (netWorth.isError) {
     return (
       <Alert
-        color="expense"
+        color="gray"
         icon={<IconAlertCircle size={20} stroke={1.75} />}
         title="Gagal memuat data"
       >
@@ -42,22 +36,15 @@ export function NetWorthPage() {
           <Text size="sm">
             Kekayaan Anda belum bisa ditampilkan. Periksa koneksi lalu coba lagi.
           </Text>
-          <Button
-            variant="default"
-            size="xs"
-            onClick={() => {
-              void netWorth.refetch();
-              void balances.refetch();
-            }}
-          >
+          <Button variant="default" size="xs" onClick={() => void netWorth.refetch()}>
             Coba lagi
           </Button>
         </Stack>
       </Alert>
     );
   }
-  if (!netWorth.data || !balances.data) return <NetWorthSkeleton />;
-  return <NetWorthView netWorth={netWorth.data} balances={balances.data} />;
+  if (!netWorth.data) return <NetWorthSkeleton />;
+  return <NetWorthView netWorth={netWorth.data} />;
 }
 
 function NetWorthSkeleton() {
@@ -75,18 +62,14 @@ function NetWorthSkeleton() {
   );
 }
 
-export function NetWorthView({
-  netWorth,
-  balances,
-}: {
-  netWorth: NetWorthReport;
-  balances: BalancesReport;
-}) {
-  const groups = balances.groups.filter((g) => g.accounts.length > 0);
-  if (groups.length === 0) return <EmptyState />;
+export function NetWorthView({ netWorth }: { netWorth: NetWorthReport }) {
+  // Per-account values come from the net-worth report itself (holdings included), so the rows
+  // of a group always add up to its total.
+  const byKind = (kind: AccountKind) => netWorth.accounts.filter((a) => a.kind === kind);
+  if (netWorth.accounts.length === 0) return <EmptyState />;
 
-  const assetGroups = groups.filter((g) => g.key !== 'liability');
-  const liabilityGroups = groups.filter((g) => g.key === 'liability');
+  const assetGroups = ASSET_KINDS.filter((k) => byKind(k).length > 0);
+  const liabilities = byKind('liability');
   const missing = netWorth.missing_rates;
   const missingNames = [...new Set(missing.map((m) => m.account_name))];
 
@@ -108,18 +91,15 @@ export function NetWorthView({
         <Card>
           <SectionHeader title="Aset" minor={netWorth.assets_minor} />
           <Stack gap="md" mt="sm">
-            {assetGroups.map((g) => {
-              const kind = asKind(g.key);
-              return (
-                <AccountGroup
-                  key={g.key ?? g.name}
-                  label={kind ? KIND_LABEL[kind] : g.name}
-                  total={kind ? netWorth.by_kind[kind] : g.total_base_minor}
-                  accounts={g.accounts}
-                  baseCurrency={balances.base_currency}
-                />
-              );
-            })}
+            {assetGroups.map((kind) => (
+              <AccountGroup
+                key={kind}
+                label={KIND_LABEL[kind]}
+                total={netWorth.by_kind[kind]}
+                accounts={byKind(kind)}
+                baseCurrency={netWorth.base_currency}
+              />
+            ))}
             {assetGroups.length === 0 && (
               <Text size="sm" c="dimmed">
                 Belum ada aset.
@@ -138,19 +118,12 @@ export function NetWorthView({
           <Card>
             <SectionHeader title="Liabilitas" minor={netWorth.liabilities_minor} />
             <Stack gap="md" mt="sm">
-              {liabilityGroups.length === 0 ? (
+              {liabilities.length === 0 ? (
                 <Text size="sm" c="dimmed">
                   Tidak ada liabilitas.
                 </Text>
               ) : (
-                liabilityGroups.map((g) => (
-                  <AccountGroup
-                    key={g.key ?? g.name}
-                    accounts={g.accounts}
-                    baseCurrency={balances.base_currency}
-                    liability
-                  />
-                ))
+                <AccountGroup accounts={liabilities} baseCurrency={netWorth.base_currency} />
               )}
             </Stack>
           </Card>
@@ -183,13 +156,11 @@ function AccountGroup({
   total,
   accounts,
   baseCurrency,
-  liability,
 }: {
   label?: string;
   total?: string;
-  accounts: BalancesReport['groups'][number]['accounts'];
+  accounts: NetWorthAccount[];
   baseCurrency: string;
-  liability?: boolean;
 }) {
   return (
     <div>
@@ -204,7 +175,7 @@ function AccountGroup({
         </Group>
       )}
       {accounts.map((a) => {
-        const value = liability ? asLiability(a.value_base_minor) : a.value_base_minor;
+        const value = a.value_base_minor;
         return (
           <Group key={a.id} justify="space-between" wrap="nowrap" className={classes.row}>
             <Text size="sm" truncate>
@@ -216,7 +187,7 @@ function AccountGroup({
               )}
             </Text>
             <Text size="sm" component="div" c={value === null ? 'dimmed' : undefined}>
-              <Amount minor={value} tone={liability ? 'over' : 'plain'} />
+              <Amount minor={value} tone={a.kind === 'liability' ? 'neutral' : 'plain'} />
             </Text>
           </Group>
         );

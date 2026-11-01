@@ -44,13 +44,13 @@
 }
 
 .segBank {
-  background: var(--mantine-color-amber-5);
+  background: var(--mantine-primary-color-5);
 }
 .segInvestment {
   background: var(--mantine-color-income-6);
 }
 .segEwallet {
-  background: var(--mantine-color-amber-8);
+  background: var(--mantine-primary-color-8);
 }
 .segCash {
   background: var(--mantine-color-gray-5);

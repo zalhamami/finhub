@@ -5,6 +5,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NetWorthPage } from '../src/pages/NetWorthPage';
 import { theme } from '../src/theme/theme';
 
+const sum = (xs: (string | null)[]) => xs.reduce((t, x) => t + BigInt(x ?? 0), 0n);
+
+const acc = (id: string, name: string, kind: string, v: string | null, currency = 'IDR') => ({
+  id,
+  name,
+  kind,
+  currency,
+  value_base_minor: v,
+});
 const netWorth = {
   as_of: '2026-11-01',
   base_currency: 'IDR',
@@ -18,34 +27,17 @@ const netWorth = {
     investment: '12700000000',
     liability: '-230000000',
   },
-  missing_rates: [{ account_id: 'x', account_name: 'Pluang USD', type: 'fx_rate' }],
-};
-const acc = (id: string, name: string, kind: string, v: string | null) => ({
-  id,
-  name,
-  kind,
-  currency: 'IDR',
-  value_base_minor: v,
-});
-const balances = {
-  as_of: '2026-11-01',
-  base_currency: 'IDR',
-  total_base_minor: '0',
-  groups: [
-    {
-      key: 'bank',
-      name: 'bank',
-      total_base_minor: '4230000000',
-      accounts: [acc('1', 'BCA', 'bank', '3810000000')],
-    },
-    {
-      key: 'liability',
-      name: 'liability',
-      total_base_minor: '230000000',
-      accounts: [acc('2', 'CC BCA', 'liability', '230000000')],
-    },
+  accounts: [
+    acc('c', 'Dompet', 'cash', '85000000'),
+    acc('1', 'BCA', 'bank', '3810000000'),
+    acc('3', 'Jago', 'bank', '420000000'),
+    acc('e', 'GoPay', 'ewallet', '125000000'),
+    // investment value includes holdings: the page must show it, not the cash balance
+    acc('i', 'Bibit', 'investment', '12700000000'),
+    acc('p', 'Pluang USD', 'investment', null, 'USD'),
+    acc('2', 'CC BCA', 'liability', '-230000000'),
   ],
-  missing_rates: [],
+  missing_rates: [{ account_id: 'p', account_name: 'Pluang USD', type: 'fx_rate' }],
 };
 
 function mockApi(responses: Record<string, unknown>, ok = true) {
@@ -78,29 +70,40 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('NetWorthPage', () => {
   it('renders the hero, groups, accounts and the missing-rate note from the API', async () => {
-    mockApi({ 'net-worth': netWorth, balances });
+    mockApi({ 'net-worth': netWorth });
     renderPage();
     expect(await screen.findByText('Rp169.100.000')).toBeTruthy();
     expect(screen.getByText('Kekayaan bersih')).toBeTruthy();
     expect(screen.getByText('BCA')).toBeTruthy();
     expect(screen.getByText('Rp38.100.000')).toBeTruthy();
-    // liability shown negative regardless of stored sign
+    // investment row carries the holdings value
+    expect(screen.getByText('Bibit')).toBeTruthy();
+    expect(screen.getAllByText('Rp127.000.000').length).toBeGreaterThan(1); // row + group total
+    // unvalued account shows a dash
+    expect(screen.getByText('Pluang USD', { selector: 'p, div, span' })).toBeTruthy();
+    // liability is negative and in neutral text, not clay
     expect(screen.getByText('CC BCA')).toBeTruthy();
-    expect(screen.getAllByText('-Rp2.300.000').length).toBeGreaterThan(0);
+    const liab = screen.getAllByText('-Rp2.300.000');
+    expect(liab.length).toBeGreaterThan(0);
+    expect(liab.every((el) => !/over/.test(el.className))).toBe(true);
     expect(screen.getByRole('note').textContent).toContain('Pluang USD');
   });
 
+  it('fixture self-check: account rows add up to their kind totals', () => {
+    for (const kind of Object.keys(netWorth.by_kind) as (keyof typeof netWorth.by_kind)[]) {
+      const rows = netWorth.accounts.filter((a) => a.kind === kind).map((a) => a.value_base_minor);
+      expect(sum(rows)).toBe(BigInt(netWorth.by_kind[kind]));
+    }
+  });
+
   it('shows an empty state when there are no accounts', async () => {
-    mockApi({
-      'net-worth': { ...netWorth, missing_rates: [] },
-      balances: { ...balances, groups: [] },
-    });
+    mockApi({ 'net-worth': { ...netWorth, accounts: [], missing_rates: [] } });
     renderPage();
     expect(await screen.findByText('Belum ada akun')).toBeTruthy();
   });
 
   it('shows an error state', async () => {
-    mockApi({ 'net-worth': null, balances: null }, false);
+    mockApi({ 'net-worth': null }, false);
     renderPage();
     expect(await screen.findByText('Gagal memuat data')).toBeTruthy();
   });

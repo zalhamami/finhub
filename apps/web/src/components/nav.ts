@@ -4,7 +4,6 @@ import {
   IconHome,
   IconReceipt,
   IconSettings,
-  IconWallet,
   IconBuildingBank,
 } from '@tabler/icons-react';
 
@@ -16,10 +15,14 @@ export const SIDEBAR_ITEMS = [
   { to: '/pengaturan', label: 'Pengaturan', icon: IconSettings },
 ] as const;
 
-/** Until the real home screen exists (M2), Beranda on mobile is the net worth page. */
+/** Mobile tabs. Kekayaan is the net worth page ("/"); Beranda lives in the sidebar only until M2. */
 export const TAB_ITEMS = [
-  { to: '/', label: 'Beranda', icon: IconWallet },
+  { to: '/', label: 'Kekayaan', icon: IconCoin },
   { to: '/transaksi', label: 'Transaksi', icon: IconReceipt },
   { to: '/akun', label: 'Akun', icon: IconBuildingBank },
   { to: '/pengaturan', label: 'Lainnya', icon: IconDots },
 ] as const;
+
+/** "/" matches only itself; other routes match themselves and their sub-paths. */
+export const isActivePath = (to: string, pathname: string) =>
+  to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`);
