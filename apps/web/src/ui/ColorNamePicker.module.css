@@ -1,0 +1,29 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-xs);
+  margin-top: 6px;
+}
+
+.swatch {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--finhub-border);
+  border-radius: 50%;
+  background: var(--finhub-surface);
+}
+
+.chip {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--chip);
+}
+
+.active {
+  border-color: var(--mantine-primary-color-filled);
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 1px;
+}

@@ -9,12 +9,20 @@ import {
   MantineProvider,
   Stack,
   Text,
+  NavLink,
   Title,
   UnstyledButton,
   useMantineTheme,
 } from '@mantine/core';
 import { useDebouncedCallback } from '@mantine/hooks';
-import { IconAlertCircle, IconCheck } from '@tabler/icons-react';
+import {
+  IconAlertCircle,
+  IconCategory,
+  IconCheck,
+  IconChevronRight,
+  IconWallet,
+} from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Amount } from '../components/Amount';
@@ -114,6 +122,25 @@ export function SettingsPage() {
             </Group>
           )}
         </Stack>
+      </Card>
+
+      <Card padding="xs">
+        <NavLink
+          component={Link}
+          to="/kategori"
+          label="Kategori"
+          description="Kelola kategori pengeluaran dan pemasukan"
+          leftSection={<IconCategory size={20} stroke={1.75} />}
+          rightSection={<IconChevronRight size={16} stroke={1.75} />}
+        />
+        <NavLink
+          component={Link}
+          to="/pengaturan/jenis-akun"
+          label="Jenis akun"
+          description="Kelola jenis akun seperti Bank, E-wallet, atau Saham"
+          leftSection={<IconWallet size={20} stroke={1.75} />}
+          rightSection={<IconChevronRight size={16} stroke={1.75} />}
+        />
       </Card>
 
       <Card>

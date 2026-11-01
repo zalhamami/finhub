@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isActivePath } from '../src/components/nav';
+import { isActivePath, isTabActive } from '../src/components/nav';
 import { RouterProvider, createAppRouter } from '../src/router';
 import { ThemeRoot } from '../src/theme/AccentProvider';
 
@@ -45,5 +45,12 @@ describe('navigation active state', () => {
     const tabs = await renderAt('/pengaturan');
     expect(tabs.getByRole('link', { name: 'Lainnya' }).getAttribute('aria-current')).toBe('page');
     expect(tabs.getByRole('link', { name: 'Kekayaan' }).getAttribute('aria-current')).toBeNull();
+  });
+
+  it('Kategori lives under the Lainnya tab', () => {
+    const lainnya = { to: '/pengaturan', also: ['/kategori'] };
+    expect(isTabActive(lainnya, '/kategori')).toBe(true);
+    expect(isTabActive(lainnya, '/pengaturan/jenis-akun')).toBe(true);
+    expect(isTabActive(lainnya, '/akun')).toBe(false);
   });
 });

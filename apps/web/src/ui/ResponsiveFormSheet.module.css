@@ -1,0 +1,9 @@
+.title {
+  font-weight: 650;
+  font-size: var(--mantine-font-size-lg);
+}
+
+/* leave room for the home indicator under the last button */
+.drawerBody {
+  padding-bottom: calc(var(--mantine-spacing-xl) + var(--safe-bottom));
+}

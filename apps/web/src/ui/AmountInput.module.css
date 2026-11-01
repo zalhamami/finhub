@@ -1,0 +1,8 @@
+.input {
+  font-size: 16px;
+  font-variant-numeric: var(--amount-features);
+}
+
+.preview {
+  font-variant-numeric: var(--amount-features);
+}

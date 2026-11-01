@@ -1,0 +1,27 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: var(--mantine-spacing-xs);
+  margin-top: 6px;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border: 1px solid var(--finhub-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--finhub-surface);
+  color: var(--mantine-color-text);
+}
+
+.cell:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.active {
+  border-color: var(--mantine-primary-color-filled);
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 1px;
+  color: var(--mantine-primary-color-filled);
+}

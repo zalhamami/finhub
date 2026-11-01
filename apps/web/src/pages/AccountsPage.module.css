@@ -1,0 +1,112 @@
+.sectionHead {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-lg);
+  border-bottom: 1px solid var(--finhub-border);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--finhub-border);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+/* Desktop: table-like columns (name | type · group | balance). */
+.row {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 2fr) minmax(0, 1.2fr) minmax(120px, 1fr);
+  align-items: center;
+  column-gap: var(--mantine-spacing-md);
+  min-height: 56px;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-lg);
+}
+
+.row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.row[data-archived] {
+  opacity: 0.6;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+  color: var(--mantine-color-text);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+}
+
+.dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.amount {
+  text-align: right;
+  font-weight: 500;
+}
+
+.moves {
+  padding-right: var(--mantine-spacing-sm);
+}
+
+.empty {
+  text-align: center;
+  padding-block: var(--mantine-spacing-xl);
+}
+
+/* Mobile: compact list; the type line drops under the name column and the amount stays right. */
+@media (max-width: 47.99em) {
+  .row {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'icon name amount'
+      'icon meta amount';
+    row-gap: 0;
+    padding-inline: var(--mantine-spacing-md);
+    min-height: 60px;
+  }
+
+  .icon {
+    grid-area: icon;
+  }
+
+  .name {
+    grid-area: name;
+  }
+
+  .meta {
+    grid-area: meta;
+  }
+
+  .amount {
+    grid-area: amount;
+  }
+
+  .sectionHead {
+    padding-inline: var(--mantine-spacing-md);
+  }
+}

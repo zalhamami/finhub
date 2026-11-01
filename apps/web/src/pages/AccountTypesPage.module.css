@@ -1,0 +1,48 @@
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--finhub-text-muted);
+  text-decoration: none;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  border-bottom: 1px solid var(--finhub-border);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-md);
+  min-height: 56px;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-lg);
+}
+
+.row > :nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}

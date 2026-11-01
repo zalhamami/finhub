@@ -29,11 +29,25 @@ const routeTree = rootRoute.addChildren([
   }),
   placeholder('/beranda', 'Beranda'),
   placeholder('/transaksi', 'Transaksi'),
-  placeholder('/akun', 'Akun'),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/akun',
+    component: lazyRouteComponent(() => import('./pages/AccountsPage'), 'AccountsPage'),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/kategori',
+    component: lazyRouteComponent(() => import('./pages/CategoriesPage'), 'CategoriesPage'),
+  }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: '/pengaturan',
     component: lazyRouteComponent(() => import('./pages/SettingsPage'), 'SettingsPage'),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/pengaturan/jenis-akun',
+    component: lazyRouteComponent(() => import('./pages/AccountTypesPage'), 'AccountTypesPage'),
   }),
 ]);
 

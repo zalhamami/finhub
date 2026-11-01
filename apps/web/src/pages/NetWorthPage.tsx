@@ -8,17 +8,10 @@ import {
   type NetWorthAccount,
   type NetWorthReport,
 } from '../lib/api';
+import { KIND_LABEL } from '../lib/accounts';
 import { dayjs } from '../lib/dayjs';
 import { parseMinor } from '../lib/money';
 import classes from './NetWorthPage.module.css';
-
-export const KIND_LABEL: Record<AccountKind, string> = {
-  cash: 'Kas',
-  bank: 'Bank',
-  ewallet: 'E-wallet',
-  investment: 'Investasi',
-  liability: 'Liabilitas',
-};
 
 const ASSET_KINDS = ['cash', 'bank', 'ewallet', 'investment'] as const;
 
@@ -250,7 +243,7 @@ function EmptyState() {
         <Title order={3}>Belum ada akun</Title>
         <Text size="sm" c="dimmed" maw={360}>
           Tambahkan rekening, e-wallet, atau kas untuk mulai melihat kekayaan bersih Anda.
-          Pengelolaan akun hadir di M2.
+          Kelola akun di halaman Akun.
         </Text>
       </Stack>
     </Card>

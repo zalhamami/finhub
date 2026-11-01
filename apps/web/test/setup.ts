@@ -19,3 +19,6 @@ globalThis.ResizeObserver ??= class {
 };
 
 afterEach(() => cleanup());
+
+// Mantine's Combobox scrolls the active option into view.
+Element.prototype.scrollIntoView ??= () => {};
