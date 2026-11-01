@@ -1,0 +1,4 @@
+.balance {
+  font-variant-numeric: var(--amount-features);
+  white-space: nowrap;
+}

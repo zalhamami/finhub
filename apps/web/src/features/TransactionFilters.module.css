@@ -1,0 +1,22 @@
+.bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--mantine-spacing-sm);
+}
+
+@media (min-width: 48em) {
+  .fields {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

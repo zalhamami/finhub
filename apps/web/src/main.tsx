@@ -1,5 +1,6 @@
 import '@fontsource-variable/plus-jakarta-sans';
 import '@mantine/core/styles.css';
+import '@mantine/dates/styles.css';
 import './theme/variables.css';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

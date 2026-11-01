@@ -7,6 +7,7 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 import { Layout } from './components/Layout';
+import { searchToFilters, type TxFilters } from './lib/txFilters';
 
 const rootRoute = createRootRoute({ component: Layout });
 
@@ -28,7 +29,13 @@ const routeTree = rootRoute.addChildren([
     component: lazyRouteComponent(() => import('./pages/NetWorthPage'), 'NetWorthPage'),
   }),
   placeholder('/beranda', 'Beranda'),
-  placeholder('/transaksi', 'Transaksi'),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/transaksi',
+    // URL <-> filters: bad values are dropped, never an error page
+    validateSearch: (raw: Record<string, unknown>): TxFilters => searchToFilters(raw),
+    component: lazyRouteComponent(() => import('./pages/TransactionsPage'), 'TransactionsPage'),
+  }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: '/akun',

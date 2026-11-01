@@ -18,6 +18,8 @@ export default defineConfig({
         // Stable vendor chunks (cache well across deploys); pages are lazy chunks from the router.
         manualChunks(id: string) {
           if (!id.includes('node_modules')) return undefined;
+          if (id.includes('@mantine/dates') || /node_modules\/(\.pnpm\/)?dayjs[@/]/.test(id))
+            return 'vendor-dates';
           if (id.includes('@mantine') || id.includes('@tabler')) return 'vendor-mantine';
           if (id.includes('@tanstack')) return 'vendor-tanstack';
           if (/node_modules\/(\.pnpm\/)?(react|react-dom|scheduler)[@/]/.test(id))

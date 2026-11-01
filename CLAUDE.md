@@ -48,10 +48,16 @@ Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `po
 
 ### Forms, pages, shared UI
 
-- Routes: `/akun` (AccountsPage), `/kategori` (CategoriesPage), `/pengaturan/jenis-akun` (AccountTypesPage; linked from Pengaturan, which is the mobile "Lainnya" tab together with `/kategori`).
+- Routes: `/transaksi` (TransactionsPage), `/akun` (AccountsPage), `/kategori` (CategoriesPage), `/pengaturan/jenis-akun` (AccountTypesPage; linked from Pengaturan, which is the mobile "Lainnya" tab together with `/kategori`).
 - Form boundary: `lib/schemas.ts` holds Zod schemas whose input is the raw form strings and whose output is the exact API payload (`accountFormSchema(typeFlags)` only validates/sends credit limit / statement / due day when the type has them). `zodFormResolver` plugs them into `@mantine/form`. Money text goes through `lib/amount.ts` (`parseAmountText` wraps core `parseIdrAmount`; empty = 0, leading `-` negates, `1500,50` = cents) -> bigint minor units sent as strings.
 - Pure, tested logic lives in `lib/` (`accounts.ts` kind sections/totals/`moveItem`, `categories.ts` tree flattening, `errors.ts` 409 -> Indonesian message). Features (`features/*Form`, `CategoryTree`) are presentational: data and mutations are injected by the page.
 - Shared UI in `ui/`: `AmountInput`, `IconPicker`, `ColorNamePicker` (stores the Mantine color NAME from `lib/palette.ts`, never hex; `expense` clay is not offered), `ResponsiveFormSheet` (Modal >= sm, full-height bottom Drawer below), `ConfirmDialog`, `EntityIcon`. Icons are stored by key (`lib/icons.ts`).
+
+### Transactions (UI)
+
+- Pure logic in `lib/transactions.ts` (TDD'd): `txFormSchema(ctx)` (form strings -> `{type, body}` for `POST /transactions` or `POST /transfers`; validates amount > 0, category kind, accounts differ, fee needs a category, cross-currency needs the received amount; empty time = now if the date is today else 12:00, always `+07:00`), `transactionToForm` (edit; null for adjustments), `groupByDay` (Jakarta days, bigint daily net per currency), `describeTransaction` (list row model). Filters <-> URL <-> API query in `lib/txFilters.ts` (URL keys = `TxFilters` keys; `/transaksi` route `validateSearch` drops garbage). Jakarta date helpers in `lib/dates.ts`; category picker data / default fee category ("Biaya Admin", else "Biaya...") in `lib/categories.ts`.
+- One add/edit sheet for the whole app: `features/TransactionSheetContext.tsx` (`useTransactionSheet().openCreate/openEdit`; lazy-loads `TransactionSheet`, which owns queries, mutations, invalidation of `transactions`/`accounts`/`reports`, delete confirm). `TransactionForm` is presentational. Entry points live in `Layout` (header button, mobile FAB, desktop key "n" via `lib/shortcuts.ts`). Edit cannot change the type (the API has no kind patch).
+- Date pickers: `ui/dates.tsx` (`@mantine/dates`, values are `YYYY-MM-DD` strings, locale `id`); its own `vendor-dates` chunk.
 
 ### How to change colors
 

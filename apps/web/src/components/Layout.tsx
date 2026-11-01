@@ -3,15 +3,17 @@ import {
   AppShell,
   Button,
   Group,
-  Modal,
   NavLink,
   Text,
   useComputedColorScheme,
   useMantineColorScheme,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconMoon, IconPlus, IconSun } from '@tabler/icons-react';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { TransactionSheetProvider, useTransactionSheet } from '../features/TransactionSheetContext';
+import { isTypingTarget } from '../lib/shortcuts';
 import { BottomTabs } from './BottomTabs';
 import classes from './Layout.module.css';
 import { SIDEBAR_ITEMS, isActivePath } from './nav';
@@ -31,8 +33,25 @@ function ColorSchemeToggle() {
   );
 }
 
-export function Layout() {
-  const [opened, { open, close }] = useDisclosure(false);
+/** Desktop shortcut: "n" opens the add-transaction form unless you are typing or a dialog is open. */
+function useNewTransactionShortcut(open: () => void, isOpen: boolean) {
+  const desktop = useMediaQuery('(min-width: 48em)', false, { getInitialValueInEffect: false });
+  useEffect(() => {
+    if (!desktop || isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'n' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat) return;
+      if (isTypingTarget(e.target) || document.querySelector('[role="dialog"]')) return;
+      e.preventDefault();
+      open();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [desktop, isOpen, open]);
+}
+
+function Shell() {
+  const { openCreate: open, isOpen } = useTransactionSheet();
+  useNewTransactionShortcut(open, isOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -52,7 +71,7 @@ export function Layout() {
               leftSection={<IconPlus size={18} stroke={1.75} />}
               onClick={open}
             >
-              Tambah
+              Tambah transaksi
             </Button>
             <ColorSchemeToggle />
           </Group>
@@ -91,12 +110,14 @@ export function Layout() {
       >
         <IconPlus size={26} stroke={1.75} />
       </ActionIcon>
-
-      <Modal opened={opened} onClose={close} title="Tambah transaksi">
-        <Text size="sm" c="dimmed">
-          Pencatatan transaksi hadir di M2.
-        </Text>
-      </Modal>
     </AppShell>
+  );
+}
+
+export function Layout() {
+  return (
+    <TransactionSheetProvider>
+      <Shell />
+    </TransactionSheetProvider>
   );
 }

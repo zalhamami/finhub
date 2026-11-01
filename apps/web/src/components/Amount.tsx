@@ -1,17 +1,19 @@
 import { clsx } from 'clsx';
 import classes from './Amount.module.css';
-import { formatMinorIDR } from '../lib/money';
+import { formatMinorCurrency } from '../lib/money';
 
 interface Props {
   /** decimal string of minor units (bigint over JSON) */
   minor: string | null | undefined;
   tone?: 'plain' | 'income' | 'over' | 'dimmed' | 'neutral';
+  /** ISO code; default IDR */
+  currency?: string;
   hero?: boolean;
   className?: string;
 }
 
 /** Right-aligned, tabular, lining-number money. */
-export function Amount({ minor, tone = 'plain', hero, className }: Props) {
+export function Amount({ minor, tone = 'plain', currency = 'IDR', hero, className }: Props) {
   return (
     <span
       className={clsx(
@@ -24,7 +26,7 @@ export function Amount({ minor, tone = 'plain', hero, className }: Props) {
         className,
       )}
     >
-      {formatMinorIDR(minor)}
+      {formatMinorCurrency(minor, currency)}
     </span>
   );
 }
