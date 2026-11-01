@@ -16,7 +16,8 @@
     "db:migrate": "pnpm --filter @finhub/db db:migrate",
     "db:seed": "pnpm --filter @finhub/db db:seed",
     "dev": "pnpm --parallel --filter @finhub/server --filter @finhub/web dev",
-    "build": "pnpm --filter @finhub/web build && pnpm --filter @finhub/server build"
+    "build": "pnpm --filter @finhub/web build && pnpm --filter @finhub/server build",
+    "db:seed:demo": "pnpm --filter @finhub/db db:seed:demo"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

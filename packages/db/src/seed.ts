@@ -1,9 +1,8 @@
-import { fileURLToPath } from 'node:url';
 import { and, eq, isNull } from 'drizzle-orm';
-import { createDb, type Db } from './client';
+import type { Db } from './client';
 import * as s from './schema';
 
-const DEMO_SLUG = 'demo';
+export const DEMO_SLUG = 'demo';
 
 const TYPES: Omit<typeof s.accountTypes.$inferInsert, 'workspaceId'>[] = [
   { name: 'Cash', kind: 'cash' },
@@ -27,7 +26,21 @@ const EXPENSE_TREE: { name: string; children?: string[] }[] = [
 ];
 const INCOME = ['Gaji', 'Bonus/THR'];
 
-/** Idempotent: safe to run repeatedly. No real accounts or balances. */
+/**
+ * Seed only a FRESH database (no workspace yet). Used at server startup: re-running the base seed on
+ * every boot would resurrect categories / account types the user deleted.
+ */
+export async function seedIfFresh(db: Db): Promise<boolean> {
+  const [any] = await db.select({ id: s.workspaces.id }).from(s.workspaces).limit(1);
+  if (any) return false;
+  await seed(db);
+  return true;
+}
+
+/**
+ * BASE seed. Idempotent: safe to run repeatedly. Currencies, the `demo` workspace, settings, account
+ * types and categories only: no accounts, balances or transactions (see seed-demo.ts for those).
+ */
 export async function seed(db: Db): Promise<void> {
   await db.transaction(async (tx) => {
     await tx
@@ -98,19 +111,4 @@ export async function seed(db: Db): Promise<void> {
     }
     for (const name of INCOME) await ensureTop(name, 'income', order++);
   });
-}
-
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
-    console.error('DATABASE_URL is required');
-    process.exit(1);
-  }
-  const h = createDb(url, { max: 1 });
-  try {
-    await seed(h.db);
-    console.log('seed complete');
-  } finally {
-    await h.close();
-  }
 }

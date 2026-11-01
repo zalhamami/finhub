@@ -1,11 +1,11 @@
 import { cpSync, existsSync, rmSync } from 'node:fs';
 import { defineConfig } from 'tsup';
 
-// Self-contained ESM bundle: workspace packages AND npm deps are inlined, so the runtime image
+// Self-contained ESM bundles (dist/index.js server, dist/seed.js seed CLI): workspace packages AND npm deps are inlined, so the runtime image
 // needs no node_modules. SQL migrations from @finhub/db are copied next to it (dist/drizzle) and the
 // built web app (apps/web/dist) to dist/public.
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/seed.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',

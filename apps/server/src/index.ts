@@ -1,11 +1,13 @@
-import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { createBot } from '@finhub/bot';
 import { createDb } from '@finhub/db';
 import { createBoss, startWorker, stopBoss } from '@finhub/jobs';
-import { migrationsFolder, runMigrations } from '@finhub/db/migrate';
+import { runMigrations } from '@finhub/db/migrate';
+import { seedIfFresh } from '@finhub/db/seed';
+import { seedDemo } from '@finhub/db/seed-demo';
+import { resolveMigrationsDir } from './migrations-dir';
 import { createApp } from './app';
 
 /**
@@ -23,13 +25,7 @@ if (!ROLES.includes(role)) {
 const wantsHttp = role === 'all' || role === 'web';
 const wantsWorker = role === 'all' || role === 'worker';
 
-/** Next to the bundle (dist/drizzle) when bundled; the @finhub/db source folder in dev. */
-const bundled = fileURLToPath(new URL('./drizzle', import.meta.url));
-const migrationsDir = process.env.MIGRATIONS_DIR
-  ? resolve(process.env.MIGRATIONS_DIR)
-  : existsSync(bundled)
-    ? bundled
-    : migrationsFolder;
+const migrationsDir = resolveMigrationsDir(import.meta.url);
 const publicDir = process.env.PUBLIC_DIR
   ? resolve(process.env.PUBLIC_DIR)
   : fileURLToPath(new URL('./public', import.meta.url));
@@ -65,6 +61,19 @@ try {
   if (wantsHttp && handle) {
     await runMigrations(handle.db, migrationsDir);
     console.log('finhub: migrations applied');
+    // DEMO_SEED=true: fake demo data, once (no-op when the demo workspace already has accounts).
+    // Otherwise a brand-new database gets the BASE seed (currencies, `demo` workspace, settings,
+    // account types, categories; no accounts) so the app works out of the box. Never reseeds later.
+    if (process.env.DEMO_SEED === 'true' || process.env.DEMO_SEED === '1') {
+      const r = await seedDemo(handle.db);
+      console.log(
+        r.created
+          ? `finhub: demo data seeded (${r.accounts} accounts, ${r.transactions} transactions)`
+          : 'finhub: DEMO_SEED set, demo workspace already has accounts: nothing to do',
+      );
+    } else if (await seedIfFresh(handle.db)) {
+      console.log('finhub: fresh database, base data seeded');
+    }
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;

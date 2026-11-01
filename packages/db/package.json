@@ -6,16 +6,20 @@
   "exports": {
     ".": "./src/index.ts",
     "./seed": "./src/seed.ts",
-    "./migrate": "./src/migrate.ts"
+    "./migrate": "./src/migrate.ts",
+    "./seed-demo": "./src/seed-demo.ts",
+    "./seed-cli": "./src/seed-cli.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/migrate-cli.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/bin-seed.ts",
+    "db:seed:demo": "tsx src/bin-seed.ts --demo"
   },
   "dependencies": {
+    "@finhub/core": "workspace:*",
     "drizzle-orm": "^0.45.0",
     "postgres": "^3.4.0"
   },
