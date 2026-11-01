@@ -7,6 +7,7 @@ import {
   Text,
   useComputedColorScheme,
   useMantineColorScheme,
+  useMantineTheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconMoon, IconPlus, IconSun } from '@tabler/icons-react';
@@ -51,6 +52,7 @@ function useNewTransactionShortcut(open: () => void, isOpen: boolean) {
 
 function Shell() {
   const { openCreate: open, isOpen } = useTransactionSheet();
+  const theme = useMantineTheme();
   useNewTransactionShortcut(open, isOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -102,6 +104,7 @@ function Shell() {
       <BottomTabs />
       <ActionIcon
         variant="filled"
+        color={theme.primaryColor}
         size="xl"
         radius="xl"
         aria-label="Tambah transaksi"
