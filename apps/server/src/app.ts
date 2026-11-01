@@ -8,6 +8,7 @@ import { accountGroupsRoutes } from './routes/account-groups';
 import { accountTypesRoutes } from './routes/account-types';
 import { accountsRoutes } from './routes/accounts';
 import { categoriesRoutes } from './routes/categories';
+import { currenciesRoutes } from './routes/currencies';
 import { fxRatesRoutes } from './routes/fx-rates';
 import { reportsRoutes } from './routes/reports';
 import { settingsRoutes } from './routes/settings';
@@ -50,6 +51,7 @@ export function createApp(deps: AppDeps = {}): Hono {
       api.use(path, workspaceMiddleware(db, deps));
       api.route(path, routes);
     };
+    mount('/currencies', currenciesRoutes());
     mount('/account-types', accountTypesRoutes());
     mount('/account-groups', accountGroupsRoutes());
     mount('/accounts', accountsRoutes());
