@@ -1,9 +1,9 @@
-/* Amber as text: dark shade on light, light shade on dark. Never amber-5 text on white. */
+/* Accent as text: dark shade on light, light shade on dark. Never the fill shade on a page background. */
 .link {
-  color: light-dark(var(--mantine-color-amber-9), var(--mantine-color-amber-3));
+  color: light-dark(var(--mantine-primary-color-9), var(--mantine-primary-color-3));
 }
 
-/* White surface on the warm off-white page; a step above the page in dark mode. */
+/* Surface on the page background; a step above the page in dark mode. */
 .card {
-  background: light-dark(#fff, var(--mantine-color-dark-6));
+  background: var(--finhub-surface);
 }
