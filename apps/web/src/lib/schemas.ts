@@ -6,6 +6,7 @@
 import { z } from 'zod';
 import type { AccountKind, AccountPayload, AccountTypePayload, CategoryPayload } from './api';
 import { parseAmountText } from './amount';
+import { minorUnitOf } from './money';
 import { COLOR_NAMES } from './palette';
 
 const NAME = z.string().trim().min(1, 'Nama wajib diisi').max(100, 'Maksimal 100 karakter');
@@ -16,21 +17,29 @@ const optionalColor = z
   .transform((c) => (c === '' ? null : c));
 const AMOUNT_HINT = 'Nominal tidak dikenali. Contoh: 250rb, 1,5jt, Rp1.250.000';
 
-/** Amount text -> bigint minor units, or null when empty. Negative allowed unless `nonNegative`. */
-const amount = (nonNegative: boolean) =>
-  z.string().transform((text, ctx) => {
-    const r = parseAmountText(text);
-    if (r.status === 'invalid') {
-      ctx.addIssue({ code: 'custom', message: AMOUNT_HINT });
-      return z.NEVER;
-    }
-    if (r.status === 'empty') return null;
-    if (nonNegative && r.minor < 0n) {
-      ctx.addIssue({ code: 'custom', message: 'Tidak boleh negatif' });
-      return z.NEVER;
-    }
-    return r.minor;
-  });
+/**
+ * Amount text -> bigint minor units, or null when empty. Negative allowed unless `nonNegative`.
+ * `minorUnit` comes from the account's currency (see accountFormSchema); issues land on `path`.
+ */
+function parseAmountField(
+  text: string,
+  minorUnit: number,
+  nonNegative: boolean,
+  path: string,
+  ctx: z.RefinementCtx,
+): bigint | null {
+  const r = parseAmountText(text, minorUnit);
+  if (r.status === 'invalid') {
+    ctx.addIssue({ code: 'custom', path: [path], message: AMOUNT_HINT });
+    return null;
+  }
+  if (r.status === 'empty') return null;
+  if (nonNegative && r.minor < 0n) {
+    ctx.addIssue({ code: 'custom', path: [path], message: 'Tidak boleh negatif' });
+    return null;
+  }
+  return r.minor;
+}
 
 const dayOfMonth = z.string().transform((text, ctx) => {
   const t = text.trim();
@@ -95,29 +104,37 @@ export function accountFormSchema(flags: TypeFlags | undefined) {
       type_id: z.string().min(1, 'Pilih jenis akun'),
       group_id: optionalText,
       currency: z.string().min(1, 'Pilih mata uang'),
-      opening_text: amount(false),
+      opening_text: z.string(),
       opening_date: isoDate,
       icon: optionalText,
       color: optionalColor,
       include_in_net_worth: z.boolean(),
-      credit_limit_text: flags?.has_credit_limit ? amount(true) : z.string().transform(() => null),
+      credit_limit_text: z.string(),
       statement_day: flags?.has_due_day ? dayOfMonth : z.string().transform(() => null),
       due_day: flags?.has_due_day ? dayOfMonth : z.string().transform(() => null),
     })
-    .transform((v): AccountPayload => ({
-      name: v.name,
-      type_id: v.type_id,
-      group_id: v.group_id,
-      currency: v.currency,
-      icon: v.icon,
-      color: v.color,
-      opening_balance_minor: (v.opening_text ?? 0n).toString(),
-      opening_date: v.opening_date,
-      credit_limit_minor: v.credit_limit_text === null ? null : v.credit_limit_text.toString(),
-      statement_day: v.statement_day,
-      due_day: v.due_day,
-      include_in_net_worth: v.include_in_net_worth,
-    }));
+    .transform((v, ctx): AccountPayload => {
+      // the currency decides how many decimals the amount texts have (IDR 2, USD 2, ...)
+      const unit = minorUnitOf(v.currency);
+      const opening = parseAmountField(v.opening_text, unit, false, 'opening_text', ctx);
+      const limit = flags?.has_credit_limit
+        ? parseAmountField(v.credit_limit_text, unit, true, 'credit_limit_text', ctx)
+        : null;
+      return {
+        name: v.name,
+        type_id: v.type_id,
+        group_id: v.group_id,
+        currency: v.currency,
+        icon: v.icon,
+        color: v.color,
+        opening_balance_minor: (opening ?? 0n).toString(),
+        opening_date: v.opening_date,
+        credit_limit_minor: limit === null ? null : limit.toString(),
+        statement_day: v.statement_day,
+        due_day: v.due_day,
+        include_in_net_worth: v.include_in_net_worth,
+      };
+    });
 }
 
 /* ---------- category ---------- */

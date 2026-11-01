@@ -23,6 +23,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Amount } from '../components/Amount';
+import { AccountAmount } from '../components/AccountAmount';
 import { AccountForm } from '../features/AccountForm';
 import {
   createAccount,
@@ -43,6 +44,7 @@ import {
 import {
   buildAccountSections,
   moveItem,
+  resolveNatives,
   resolveValues,
   type AccountRow,
   type AccountSection,
@@ -159,6 +161,7 @@ export function AccountsPage() {
     types: types.data,
     groups: groups.data,
     values,
+    natives: resolveNatives(balances.data, netWorth.data),
     showArchived,
   });
   const baseCurrency = netWorth.data?.base_currency ?? balances.data?.base_currency ?? 'IDR';
@@ -377,7 +380,13 @@ function AccountLine({
         className={classes.amount}
         c={row.value === null ? 'dimmed' : undefined}
       >
-        <Amount minor={row.value} tone={row.kind === 'liability' ? 'neutral' : 'plain'} />
+        <AccountAmount
+          currency={account.currency}
+          native={row.native}
+          base={row.value}
+          baseCurrency={baseCurrency}
+          tone={row.kind === 'liability' ? 'neutral' : 'plain'}
+        />
       </Text>
     </UnstyledButton>
   );

@@ -1,3 +1,5 @@
+import { registerCurrencies } from './money';
+
 export type AccountKind = 'cash' | 'bank' | 'ewallet' | 'investment' | 'liability';
 
 export interface MissingRate {
@@ -11,6 +13,8 @@ export interface NetWorthAccount {
   name: string;
   kind: AccountKind;
   currency: string;
+  /** ledger balance in the account's own currency (holdings not included) */
+  balance_minor: string;
   /** base-currency minor units incl. holdings; liabilities negative; null = no rate / price */
   value_base_minor: string | null;
 }
@@ -87,7 +91,12 @@ export interface ApiCategory {
 export interface BalancesReport {
   base_currency: string;
   groups: {
-    accounts: { id: string; value_base_minor: string | null }[];
+    accounts: {
+      id: string;
+      currency: string;
+      balance_minor: string;
+      value_base_minor: string | null;
+    }[];
   }[];
 }
 
@@ -169,7 +178,20 @@ export const fetchBalances = () => get<BalancesReport>('/api/v1/reports/balances
 export const fetchAccounts = () => get<ApiAccount[]>('/api/v1/accounts?include_archived=true');
 export const fetchAccountTypes = () => get<ApiAccountType[]>('/api/v1/account-types');
 export const fetchAccountGroups = () => get<ApiAccountGroup[]>('/api/v1/account-groups');
-export const fetchCurrencies = () => get<ApiCurrency[]>('/api/v1/currencies');
+/** Also feeds the money formatters (lib/money.ts) with the workspace's currency formats. */
+export const fetchCurrencies = async () => {
+  const list = await get<ApiCurrency[]>('/api/v1/currencies');
+  registerCurrencies(list);
+  return list;
+};
+export interface ApiFxRate {
+  base: string;
+  quote: string;
+  date: string;
+  /** 1 base = rate quote */
+  rate: string;
+}
+export const fetchFxRates = () => get<ApiFxRate[]>('/api/v1/fx-rates');
 export const fetchCategories = () => get<ApiCategory[]>('/api/v1/categories?include_archived=true');
 
 const send = <T>(method: string, path: string, body?: unknown) =>

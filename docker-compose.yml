@@ -29,6 +29,8 @@ services:
       DATABASE_URL: postgres://finhub:${POSTGRES_PASSWORD}@db:5432/finhub
       ROLE: all
       PORT: '3000'
+      # true = seed fake demo data once at startup (no-op if the demo workspace already has accounts)
+      DEMO_SEED: ${DEMO_SEED:-false}
     ports:
       - '127.0.0.1:3000:3000'
     depends_on:

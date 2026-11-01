@@ -14,7 +14,7 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 ## Commands
 
 - `pnpm dev` (server :3000 + Vite :5173 with /api proxy) · `pnpm install` · `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm format` · `pnpm build`
-- `pnpm db:generate` (after schema change) · `pnpm db:migrate` · `pnpm db:seed` (need `DATABASE_URL`)
+- `pnpm db:generate` (after schema change) · `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:seed:demo` (need `DATABASE_URL`)
 - DB tests need a real Postgres via `DATABASE_URL`; they use a scratch database.
 
 ## Runtime, build, deploy
@@ -23,6 +23,11 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - `pnpm build` bundles `apps/server` with tsup into one self-contained `apps/server/dist/index.js` (workspace packages and npm deps inlined; no node_modules at runtime), copies `packages/db/drizzle` to `dist/drizzle` and `apps/web/dist` to `dist/public`. Root `pnpm build` runs web first, then server. Run with `node apps/server/dist/index.js`. Migrations folder: `MIGRATIONS_DIR` > `./drizzle` beside the bundle > the `@finhub/db` source folder (dev).
 - Static web: `PUBLIC_DIR` (default `./public` beside the bundle) is served with SPA fallback to `index.html` for GET paths outside `/api`, `/healthz`, `/health`; a missing path with a file extension is a 404. Skipped quietly if the dir is absent.
 - `Dockerfile` (multi-stage, runtime has only `dist/`), `docker-compose.yml` `app` + `db`. `infra/backup.sh` / `infra/restore.sh` (pg_dump -Fc / pg_restore via `docker compose exec -T db`).
+
+## Seeds
+
+- Base seed (`packages/db/src/seed.ts`, idempotent): currencies, `demo` workspace, settings, account types, categories; no accounts/transactions. The server runs it at startup (`ROLE=all|web`, after migrations) only on a fresh DB (`seedIfFresh`: no workspace yet), so deleted base data is never resurrected.
+- Demo seed (`seed-demo.ts`, `seedDemo(db, {today?, seed?, days?})`): fake data (8 accounts, USD rates, 2 holdings with prices, ~90 days of transactions ending today, deterministic mulberry32 PRNG, validated with core `validateTransaction`). Only when the demo workspace has no accounts. Triggers: `pnpm db:seed:demo`, `node dist/seed.js --demo` (bundled seed CLI, runs migrations first; `docker compose run --rm app node dist/seed.js --demo`), env `DEMO_SEED=true` at startup (default off). CLI logic lives in `seed-cli.ts` (never runs on import; library modules must not have import-time side effects because they are bundled into `dist/index.js`).
 
 ## Telegram
 
@@ -38,7 +43,7 @@ Self-hosted personal finance hub for an Indonesian user. IDR first; spending ana
 - Cursor pagination (`GET /transactions`): `{ data, next_cursor }`, order `occurred_at desc, id desc`, opaque base64url cursor, `limit` default 50 / max 200. Ledger rule violations are 400 `ledger_invalid`; category kind mismatches 400 `category_kind_mismatch`; posting to an archived account 409 `account_archived`.
 - `GET /currencies`: global read-only list `{ code, minor_unit, display_decimals, symbol }` (feeds the account form's currency Select).
 - `GET/PATCH /settings`: `{ base_currency, locale, month_start_day, timezone, accent }`; only `accent` (preset name or `#rrggbb`, lowercased) is writable; a workspace without a row reads defaults and PATCH upserts.
-- `GET /reports/net-worth` also returns `accounts[]` (per-account `value_base_minor` incl. holdings, liabilities negative, null if unvalued); rows sum to `by_kind`. The net worth page renders from it.
+- `GET /reports/net-worth` also returns `accounts[]` (per-account `balance_minor` = ledger balance in the account's own `currency`, holdings excluded, plus `value_base_minor` incl. holdings, liabilities negative, null if unvalued); rows sum to `by_kind`. The net worth page renders from it.
 - Reports never 500 on missing data: accounts with no FX rate / price get `value_base_minor: null` (balances) or are left out of totals (net-worth) and listed in `missing_rates`.
 - Liability sign: `netWorth` counts a liability account as `-|value|` (works whether the balance is stored owed-positive or ledger-negative).
 
@@ -52,6 +57,11 @@ Mantine 9 + CSS Modules only. NO Tailwind / utility CSS, ever. PostCSS: only `po
 - Form boundary: `lib/schemas.ts` holds Zod schemas whose input is the raw form strings and whose output is the exact API payload (`accountFormSchema(typeFlags)` only validates/sends credit limit / statement / due day when the type has them). `zodFormResolver` plugs them into `@mantine/form`. Money text goes through `lib/amount.ts` (`parseAmountText` wraps core `parseIdrAmount`; empty = 0, leading `-` negates, `1500,50` = cents) -> bigint minor units sent as strings.
 - Pure, tested logic lives in `lib/` (`accounts.ts` kind sections/totals/`moveItem`, `categories.ts` tree flattening, `errors.ts` 409 -> Indonesian message). Features (`features/*Form`, `CategoryTree`) are presentational: data and mutations are injected by the page.
 - Shared UI in `ui/`: `AmountInput`, `IconPicker`, `ColorNamePicker` (stores the Mantine color NAME from `lib/palette.ts`, never hex; `expense` clay is not offered), `ResponsiveFormSheet` (Modal >= sm, full-height bottom Drawer below), `ConfirmDialog`, `EntityIcon`. Icons are stored by key (`lib/icons.ts`).
+
+### Foreign currency display
+
+- Accounts in a non-base currency show the own-currency amount as the main figure and "≈ Rp…" (or "kurs belum ada" when there is no rate) as smaller text: `components/AccountAmount` (Akun list, net worth rows), `describeTransaction(tx, accounts, categories, fx)` -> `secondary` (list rows: `≈ base` from `/fx-rates`, latest rate on/before the Jakarta date; cross-currency transfers show `→ received leg`), account picker in `TransactionForm`. Group/section totals, net worth totals and daily subtotals stay in the base currency; the daily subtotal shows base-currency entries only (foreign entries are not converted into it).
+- Formatting: `lib/money.ts` `currencyFormat/formatMinorCurrency/foreignValue` (seeded defaults IDR 0 shown, USD `US$` 2, SGD; `fetchCurrencies` registers `/currencies`). Amount parsing is currency-aware: `parseAmountText(text, minorUnit)`, `AmountInput currency=`, `minorToInputText(minor, minorUnit)`; the account/transaction schemas use the account's currency.
 
 ### Transactions (UI)
 

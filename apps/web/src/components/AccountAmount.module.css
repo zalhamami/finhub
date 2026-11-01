@@ -1,0 +1,11 @@
+.stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+
+.secondary {
+  font-variant-numeric: var(--amount-features);
+  white-space: nowrap;
+}

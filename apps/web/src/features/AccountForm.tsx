@@ -177,6 +177,7 @@ export function AccountForm({
           label="Saldo awal"
           placeholder="mis. 1,5jt atau Rp1.250.000"
           description="Boleh dikosongkan (0). Tulis dengan awalan - untuk saldo negatif."
+          currency={form.values.currency}
           {...form.getInputProps('opening_text')}
           value={form.values.opening_text}
         />
@@ -192,6 +193,7 @@ export function AccountForm({
           <AmountInput
             label="Limit kredit"
             placeholder="mis. 20jt"
+            currency={form.values.currency}
             {...form.getInputProps('credit_limit_text')}
             value={form.values.credit_limit_text}
           />

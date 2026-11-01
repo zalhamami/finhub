@@ -2,6 +2,7 @@ import { Alert, Button, Card, Group, Skeleton, Stack, Text, Title } from '@manti
 import { IconAlertCircle, IconWallet } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { Amount } from '../components/Amount';
+import { AccountAmount } from '../components/AccountAmount';
 import {
   fetchNetWorth,
   type AccountKind,
@@ -10,7 +11,7 @@ import {
 } from '../lib/api';
 import { KIND_LABEL } from '../lib/accounts';
 import { dayjs } from '../lib/dayjs';
-import { parseMinor } from '../lib/money';
+import { asLiability, parseMinor } from '../lib/money';
 import classes from './NetWorthPage.module.css';
 
 const ASSET_KINDS = ['cash', 'bank', 'ewallet', 'investment'] as const;
@@ -180,7 +181,13 @@ function AccountGroup({
               )}
             </Text>
             <Text size="sm" component="div" c={value === null ? 'dimmed' : undefined}>
-              <Amount minor={value} tone={a.kind === 'liability' ? 'neutral' : 'plain'} />
+              <AccountAmount
+                currency={a.currency}
+                native={a.kind === 'liability' ? asLiability(a.balance_minor) : a.balance_minor}
+                base={value}
+                baseCurrency={baseCurrency}
+                tone={a.kind === 'liability' ? 'neutral' : 'plain'}
+              />
             </Text>
           </Group>
         );
@@ -242,8 +249,8 @@ function EmptyState() {
         <IconWallet size={36} stroke={1.75} />
         <Title order={3}>Belum ada akun</Title>
         <Text size="sm" c="dimmed" maw={360}>
-          Tambahkan rekening, e-wallet, atau kas untuk mulai melihat kekayaan bersih Anda.
-          Kelola akun di halaman Akun.
+          Tambahkan rekening, e-wallet, atau kas untuk mulai melihat kekayaan bersih Anda. Kelola
+          akun di halaman Akun.
         </Text>
       </Stack>
     </Card>

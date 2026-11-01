@@ -5,6 +5,8 @@ import classes from './AmountInput.module.css';
 export type AmountInputProps = Omit<TextInputProps, 'inputMode' | 'value'> & {
   /** raw text; parse it with parseAmountText / the form schema */
   value: string;
+  /** ISO code the text is in (default IDR): drives the live preview ("= US$12,50") */
+  currency?: string;
 };
 
 /**
@@ -12,8 +14,14 @@ export type AmountInputProps = Omit<TextInputProps, 'inputMode' | 'value'> & {
  * amount live under the field. Parsing/formatting is lib/amount.ts; this only wires it up.
  * 16px font keeps iOS from zooming on focus.
  */
-export function AmountInput({ value, error, description, ...rest }: AmountInputProps) {
-  const preview = amountPreview(value);
+export function AmountInput({
+  value,
+  error,
+  description,
+  currency = 'IDR',
+  ...rest
+}: AmountInputProps) {
+  const preview = amountPreview(value, currency);
   return (
     <div>
       <TextInput

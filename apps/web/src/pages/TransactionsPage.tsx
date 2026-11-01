@@ -20,6 +20,8 @@ import { useTransactionSheet } from '../features/TransactionSheetContext';
 import {
   fetchAccounts,
   fetchCategories,
+  fetchFxRates,
+  fetchSettings,
   fetchTransactionPage,
   type ApiAccount,
   type ApiTransaction,
@@ -28,7 +30,13 @@ import { indexCategories } from '../lib/categories';
 import { todayJakarta } from '../lib/dates';
 import { formatMinorCurrency } from '../lib/money';
 import { colorVar } from '../lib/palette';
-import { dayLabel, describeTransaction, groupByDay, type DayGroup } from '../lib/transactions';
+import {
+  dayLabel,
+  describeTransaction,
+  groupByDay,
+  type DayGroup,
+  type FxContext,
+} from '../lib/transactions';
 import {
   filtersToApiQuery,
   filtersToSearch,
@@ -51,6 +59,8 @@ export function TransactionsPage() {
   const { openCreate, openEdit } = useTransactionSheet();
   const accounts = useQuery({ queryKey: ['accounts'], queryFn: fetchAccounts });
   const categories = useQuery({ queryKey: ['categories'], queryFn: fetchCategories });
+  const settings = useQuery({ queryKey: ['settings'], queryFn: fetchSettings, staleTime: 60_000 });
+  const fxRates = useQuery({ queryKey: ['fx-rates'], queryFn: fetchFxRates, staleTime: 60_000 });
   const list = useInfiniteQuery({
     queryKey: ['transactions', filtersToSearch(filters)],
     queryFn: ({ pageParam }) =>
@@ -63,6 +73,15 @@ export function TransactionsPage() {
     () => new Map((accounts.data ?? []).map((a) => [a.id, a])),
     [accounts.data],
   );
+  // Foreign-currency rows show "≈ base" from the fx-rates table; without both queries, no secondary text.
+  const fx = useMemo<FxContext | undefined>(
+    () =>
+      settings.data && fxRates.data
+        ? { rates: fxRates.data, baseCurrency: settings.data.base_currency }
+        : undefined,
+    [settings.data, fxRates.data],
+  );
+  const baseCurrency = settings.data?.base_currency ?? 'IDR';
   const categoryInfo = useMemo(() => indexCategories(categories.data ?? []), [categories.data]);
   const groups = useMemo(
     () => groupByDay(list.data?.pages.flatMap((p) => p.data) ?? []),
@@ -158,6 +177,8 @@ export function TransactionsPage() {
               today={today}
               accounts={accountById}
               categories={categoryInfo}
+              fx={fx}
+              baseCurrency={baseCurrency}
               onOpen={openEdit}
             />
           ))}
@@ -184,9 +205,13 @@ function DaySection({
   today,
   accounts,
   categories,
+  fx,
+  baseCurrency,
   onOpen,
 }: {
   group: DayGroup;
+  fx?: FxContext;
+  baseCurrency: string;
   today: string;
   accounts: ReadonlyMap<string, ApiAccount>;
   categories: ReturnType<typeof indexCategories>;
@@ -197,19 +222,29 @@ function DaySection({
       <h3 className={classes.dayHeader}>
         <span>{dayLabel(group.date, today)}</span>
         <span className={classes.dayNet}>
-          {group.nets.map((n) => (
-            <span
-              key={n.currency}
-              className={clsx(classes.net, n.minor.startsWith('-') ? classes.neg : classes.pos)}
-            >
-              {formatMinorCurrency(n.minor, n.currency)}
-            </span>
-          ))}
+          {/* Daily subtotal: base currency only. Foreign-currency entries are not converted or summed here. */}
+          {group.nets
+            .filter((n) => n.currency === baseCurrency)
+            .map((n) => (
+              <span
+                key={n.currency}
+                className={clsx(classes.net, n.minor.startsWith('-') ? classes.neg : classes.pos)}
+              >
+                {formatMinorCurrency(n.minor, n.currency)}
+              </span>
+            ))}
         </span>
       </h3>
       <ul className={classes.list}>
         {group.items.map((tx) => (
-          <TxRow key={tx.id} tx={tx} accounts={accounts} categories={categories} onOpen={onOpen} />
+          <TxRow
+            key={tx.id}
+            tx={tx}
+            accounts={accounts}
+            categories={categories}
+            fx={fx}
+            onOpen={onOpen}
+          />
         ))}
       </ul>
     </section>
@@ -220,14 +255,16 @@ function TxRow({
   tx,
   accounts,
   categories,
+  fx,
   onOpen,
 }: {
+  fx?: FxContext;
   tx: ApiTransaction;
   accounts: ReadonlyMap<string, ApiAccount>;
   categories: ReturnType<typeof indexCategories>;
   onOpen: (tx: ApiTransaction) => void;
 }) {
-  const m = describeTransaction(tx, accounts, categories);
+  const m = describeTransaction(tx, accounts, categories, fx);
   const editable = tx.kind !== 'adjustment';
   const body = (
     <>
@@ -266,6 +303,11 @@ function TxRow({
           tone={m.amount.tone}
           className={classes.amountText}
         />
+        {m.secondary && (
+          <Text span size="xs" c="dimmed" className={classes.fee}>
+            {m.secondary}
+          </Text>
+        )}
         {m.feeMinor && (
           <Text span size="xs" c="dimmed" className={classes.fee}>
             biaya {formatMinorCurrency(m.feeMinor, m.amount.currency)}

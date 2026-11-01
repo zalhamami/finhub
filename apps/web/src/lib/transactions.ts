@@ -2,12 +2,13 @@
  * Transaction form logic (pure): raw form strings -> exact API payload (Zod, at the form
  * boundary), API transaction -> form values (edit), and grouping a list by Jakarta day.
  */
+import { convertMinor, pickRate, type FxRate } from '@finhub/core';
 import { z } from 'zod';
 import { dayjs } from './dayjs';
 import type { ApiTransaction, CategoryKind, SimpleTxBody, TransferTxBody } from './api';
 import { parseAmountText, minorToInputText } from './amount';
 import { addDays, isClockTime, isIsoDate, jakartaClock, jakartaDate, jakartaTime } from './dates';
-import { parseMinor } from './money';
+import { foreignValue, formatMinorCurrency, minorUnitOf, parseMinor } from './money';
 import type { TxType } from './txFilters';
 
 export { jakartaDate, jakartaTime } from './dates';
@@ -92,8 +93,13 @@ export function txFormSchema(ctx: TxFormContext) {
         c.addIssue({ code: 'custom', path: [path], message });
 
       // amount (> 0)
+      // decimals follow the account's currency (IDR 2, USD 2, ...); unknown account: 2
+      const unitOf = (id: string) => {
+        const c = ctx.accounts.get(id)?.currency;
+        return c ? minorUnitOf(c) : 2;
+      };
       let amount = 0n;
-      const a = parseAmountText(v.amount_text);
+      const a = parseAmountText(v.amount_text, unitOf(v.account_id));
       if (a.status === 'empty') fail('amount_text', 'Nominal wajib diisi');
       else if (a.status === 'invalid') fail('amount_text', AMOUNT_HINT);
       else if (a.minor <= 0n) fail('amount_text', 'Nominal harus lebih dari 0');
@@ -152,7 +158,7 @@ export function txFormSchema(ctx: TxFormContext) {
         ctx.accounts.get(v.to_account_id)?.currency !== undefined &&
         ctx.accounts.get(v.account_id)!.currency !== ctx.accounts.get(v.to_account_id)!.currency;
       if (crossCurrency) {
-        const t = parseAmountText(v.to_amount_text);
+        const t = parseAmountText(v.to_amount_text, unitOf(v.to_account_id));
         if (t.status === 'empty')
           fail('to_amount_text', 'Isi jumlah yang diterima (mata uang berbeda)');
         else if (t.status === 'invalid') fail('to_amount_text', AMOUNT_HINT);
@@ -161,7 +167,7 @@ export function txFormSchema(ctx: TxFormContext) {
       }
 
       let fee: bigint | null = null;
-      const f = parseAmountText(v.fee_text);
+      const f = parseAmountText(v.fee_text, unitOf(v.account_id));
       if (f.status === 'invalid') fail('fee_text', AMOUNT_HINT);
       else if (f.status === 'ok' && f.minor < 0n) fail('fee_text', 'Biaya tidak boleh negatif');
       else if (f.status === 'ok' && f.minor > 0n) {
@@ -188,10 +194,10 @@ export function txFormSchema(ctx: TxFormContext) {
 }
 
 /** Absolute value of a minor-unit string, as editable text. */
-function absText(minor: string): string {
+function absText(minor: string, currency = 'IDR'): string {
   const n = parseMinor(minor);
   if (n === null) return '';
-  return minorToInputText((n < 0n ? -n : n).toString());
+  return minorToInputText((n < 0n ? -n : n).toString(), minorUnitOf(currency));
 }
 
 /**
@@ -210,7 +216,7 @@ export function transactionToForm(tx: ApiTransaction): TxFormValues | null {
     return {
       ...base,
       type: tx.kind,
-      amount_text: absText(e.amount_minor),
+      amount_text: absText(e.amount_minor, e.currency),
       account_id: e.account_id,
       category_id: e.category_id ?? '',
       payee: tx.payee ?? '',
@@ -225,11 +231,11 @@ export function transactionToForm(tx: ApiTransaction): TxFormValues | null {
     return {
       ...base,
       type: 'transfer',
-      amount_text: absText(from.amount_minor),
+      amount_text: absText(from.amount_minor, from.currency),
       account_id: from.account_id,
       to_account_id: to.account_id,
-      to_amount_text: from.currency !== to.currency ? absText(to.amount_minor) : '',
-      fee_text: fee ? absText(fee.amount_minor) : '',
+      to_amount_text: from.currency !== to.currency ? absText(to.amount_minor, to.currency) : '',
+      fee_text: fee ? absText(fee.amount_minor, fee.currency) : '',
       fee_category_id: fee?.category_id ?? '',
     };
   }
@@ -283,6 +289,39 @@ export interface TxRowModel {
   amount: { minor: string; currency: string; tone: 'neutral' | 'income' | 'dimmed' };
   /** transfer fee in the source currency, when there is one */
   feeMinor: string | null;
+  /**
+   * Smaller line under the amount: "≈ Rp…" / "kurs belum ada" for a foreign-currency amount (needs
+   * `fx` in describeTransaction), or "→ US$61,50" (the received leg) for a cross-currency transfer.
+   */
+  secondary: string | null;
+}
+
+export interface FxContext {
+  rates: readonly FxRate[];
+  baseCurrency: string;
+}
+
+/** Base-currency minor units of `minor` (in `currency`) on a Jakarta date, or null with no rate. */
+export function baseEquivalent(
+  minor: string,
+  currency: string,
+  date: string,
+  fx: FxContext,
+): string | null {
+  const n = parseMinor(minor);
+  if (n === null) return null;
+  if (currency === fx.baseCurrency) return n.toString();
+  try {
+    const rate = pickRate(fx.rates, currency, fx.baseCurrency, date);
+    return convertMinor(
+      n,
+      { code: currency, minorUnit: minorUnitOf(currency) },
+      { code: fx.baseCurrency, minorUnit: minorUnitOf(fx.baseCurrency) },
+      rate,
+    ).toString();
+  } catch {
+    return null;
+  }
 }
 
 /** API transaction -> what a list row shows. Expenses stay neutral (clay is for overspending only). */
@@ -290,6 +329,7 @@ export function describeTransaction(
   tx: ApiTransaction,
   accounts: ReadonlyMap<string, { name: string }>,
   categories: ReadonlyMap<string, { name: string; icon: string | null; color: string | null }>,
+  fx?: FxContext,
 ): TxRowModel {
   const accountName = (id: string | undefined) =>
     (id && accounts.get(id)?.name) || 'Akun tidak dikenal';
@@ -302,6 +342,18 @@ export function describeTransaction(
     const to = legs.find((e) => (parseMinor(e.amount_minor) ?? 0n) > 0n);
     const fee = tx.entries.find((e) => e.is_fee);
     const sent = from ? absMinor(from.amount_minor) : '0';
+    const crossCurrency = !!from && !!to && from.currency !== to.currency;
+    const fromCcy = from?.currency ?? 'IDR';
+    let secondary: string | null = null;
+    if (crossCurrency)
+      secondary = `→ ${formatMinorCurrency(absMinor(to.amount_minor), to.currency)}`;
+    else if (fx && fromCcy !== fx.baseCurrency)
+      secondary = foreignValue(
+        sent,
+        fromCcy,
+        baseEquivalent(sent, fromCcy, jakartaDate(tx.occurred_at), fx),
+        fx.baseCurrency,
+      )!.secondary;
     return {
       title: `Transfer: ${accountName(from?.account_id)} → ${accountName(to?.account_id)}`,
       category: null,
@@ -309,10 +361,20 @@ export function describeTransaction(
       accountName: '',
       amount: { minor: sent, currency: from?.currency ?? 'IDR', tone: 'dimmed' },
       feeMinor: fee ? absMinor(fee.amount_minor) : null,
+      secondary,
     };
   }
   const e = tx.entries[0];
   const cat = e?.category_id ? categories.get(e.category_id) : undefined;
+  const secondary =
+    fx && e && e.currency !== fx.baseCurrency
+      ? foreignValue(
+          e.amount_minor,
+          e.currency,
+          baseEquivalent(e.amount_minor, e.currency, jakartaDate(tx.occurred_at), fx),
+          fx.baseCurrency,
+        )!.secondary
+      : null;
   return {
     title: tx.kind === 'adjustment' ? 'Penyesuaian saldo' : (cat?.name ?? 'Tanpa kategori'),
     category: cat ? { icon: cat.icon, color: cat.color } : null,
@@ -324,6 +386,7 @@ export function describeTransaction(
       tone: sign(e?.amount_minor ?? '0'),
     },
     feeMinor: null,
+    secondary,
   };
 }
 

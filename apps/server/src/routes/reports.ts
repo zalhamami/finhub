@@ -172,6 +172,8 @@ export function reportsRoutes(): Hono<AppEnv> {
           group_id: a.groupId,
           currency: a.currency,
           sort_order: a.sortOrder,
+          /** ledger balance in the account's own currency (holdings NOT included) */
+          balance_minor: a.balanceMinor,
           value_base_minor: nw.perAccount[a.id] ?? null,
         }))
         .sort((x, y) => x.sort_order - y.sort_order || x.name.localeCompare(y.name))

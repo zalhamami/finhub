@@ -198,6 +198,25 @@ describe.skipIf(!DATABASE_URL)('reports', () => {
     }
   });
 
+  it('net-worth: foreign accounts carry their native balance and currency next to the base value', async () => {
+    const r = await A('GET', '/reports/net-worth?as_of=2026-03-01');
+    const rows = r.data.accounts as {
+      id: string;
+      currency: string;
+      balance_minor: string;
+      value_base_minor: string | null;
+    }[];
+    const w = rows.find((x) => x.id === wise)!;
+    expect(w.currency).toBe('USD');
+    expect(typeof w.balance_minor).toBe('string');
+    expect(w.balance_minor).toBe('10000'); // US$100,00 native
+    expect(w.value_base_minor).toBe('160000000'); // x 16000 = Rp1.600.000,00 in minor units
+    const s = rows.find((x) => x.id === sgd)!;
+    expect(s.currency).toBe('SGD');
+    expect(s.value_base_minor).toBeNull(); // no rate: native balance still reported
+    expect(typeof s.balance_minor).toBe('string');
+  });
+
   it('net-worth: price as of date; missing price is reported instead of failing', async () => {
     const jan = await A('GET', '/reports/net-worth?as_of=2026-01-15');
     // price 1000 on 2026-01-01 -> 10 x 1000 = 10,000 IDR = 1,000,000 minor; USD rate not yet available

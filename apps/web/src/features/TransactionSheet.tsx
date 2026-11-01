@@ -84,16 +84,17 @@ export default function TransactionSheet({
     onError: (e) => setDeleteError(friendlyError(e, 'transaction')),
   });
 
-  const balanceMap = useMemo(() => {
-    const out = new Map<string, string>();
-    const base = balances.data?.base_currency;
-    const byId = new Map((accounts.data ?? []).map((a) => [a.id, a]));
+  // Own-currency balance per account, plus the base-currency value (null = no FX rate).
+  const { balanceMap, baseValueMap } = useMemo(() => {
+    const native = new Map<string, string>();
+    const base = new Map<string, string | null>();
     for (const g of balances.data?.groups ?? [])
-      for (const a of g.accounts)
-        if (a.value_base_minor !== null && byId.get(a.id)?.currency === base)
-          out.set(a.id, a.value_base_minor);
-    return out;
-  }, [balances.data, accounts.data]);
+      for (const a of g.accounts) {
+        native.set(a.id, a.balance_minor);
+        base.set(a.id, a.value_base_minor);
+      }
+    return { balanceMap: native, baseValueMap: base };
+  }, [balances.data]);
 
   const initial: TxFormValues | null = useMemo(() => {
     if (!accounts.data || !categories.data) return null;
@@ -141,6 +142,8 @@ export default function TransactionSheet({
             accountTypes={types.data ?? []}
             categories={categories.data}
             balances={balanceMap}
+            baseValues={baseValueMap}
+            baseCurrency={balances.data?.base_currency ?? 'IDR'}
             submitting={save.isPending}
             error={error}
             onSubmit={submit}

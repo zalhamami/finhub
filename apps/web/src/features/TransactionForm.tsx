@@ -14,7 +14,7 @@ import { useMemo, useRef, useState } from 'react';
 import { bySortOrder } from '../lib/accounts';
 import type { ApiAccount, ApiAccountType, ApiCategory } from '../lib/api';
 import { categorySelectData, indexCategories } from '../lib/categories';
-import { formatMinorCurrency } from '../lib/money';
+import { foreignValue, formatMinorCurrency } from '../lib/money';
 import { zodFormResolver } from '../lib/schemas';
 import {
   NOTE_MAX,
@@ -38,6 +38,9 @@ export interface TransactionFormProps {
   categories: ApiCategory[];
   /** account id -> balance (minor units, account currency); missing = not shown */
   balances: ReadonlyMap<string, string>;
+  /** account id -> base-currency value (null = no FX rate); shown as "≈ …" for foreign accounts */
+  baseValues?: ReadonlyMap<string, string | null>;
+  baseCurrency?: string;
   submitting?: boolean;
   /** friendly API failure text for the last submit */
   error?: string | null;
@@ -58,6 +61,8 @@ export function TransactionForm({
   accountTypes,
   categories,
   balances,
+  baseValues,
+  baseCurrency = 'IDR',
   submitting,
   error,
   onSubmit,
@@ -103,9 +108,19 @@ export function TransactionForm({
           </Text>
         </Group>
         {bal !== undefined && a && (
-          <Text size="xs" c="dimmed" className={classes.balance}>
-            {formatMinorCurrency(bal, a.currency)}
-          </Text>
+          <Stack gap={0} align="flex-end">
+            <Text size="xs" c="dimmed" className={classes.balance}>
+              {formatMinorCurrency(bal, a.currency)}
+            </Text>
+            {(() => {
+              const fv = foreignValue(bal, a.currency, baseValues?.get(a.id), baseCurrency);
+              return fv ? (
+                <Text size="xs" c="dimmed" className={classes.balance}>
+                  {fv.secondary}
+                </Text>
+              ) : null;
+            })()}
+          </Stack>
         )}
       </Group>
     );
@@ -196,6 +211,7 @@ export function TransactionForm({
           size="lg"
           label={v.type === 'transfer' ? 'Nominal dikirim' : 'Nominal'}
           placeholder="50rb, 1,5jt, Rp1.250.000"
+          currency={from?.currency}
           {...field('amount_text')}
         />
 
@@ -231,12 +247,14 @@ export function TransactionForm({
                 label={`Jumlah diterima (${to!.currency})`}
                 description={`Beda mata uang: ${from!.currency} → ${to!.currency}`}
                 placeholder="mis. 61,50"
+                currency={to!.currency}
                 {...field('to_amount_text')}
               />
             )}
             <AmountInput
               label="Biaya admin (opsional)"
               placeholder="mis. 6500"
+              currency={from?.currency}
               {...field('fee_text')}
             />
             {v.fee_text.trim() !== '' && (

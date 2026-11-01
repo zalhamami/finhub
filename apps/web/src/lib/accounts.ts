@@ -32,6 +32,11 @@ export interface AccountRow {
   groupName: string | null;
   /** base-currency minor units (decimal string); liabilities negative; null = unknown / archived */
   value: string | null;
+  /**
+   * Ledger balance in the account's own currency (liabilities negative), only for accounts whose
+   * balance IS their value (no holdings); null otherwise or for archived accounts.
+   */
+  native: string | null;
   archived: boolean;
 }
 
@@ -58,6 +63,18 @@ export function resolveValues(
   return out;
 }
 
+/** Per-account ledger balance in the account's own currency (decimal string). */
+export function resolveNatives(
+  balances: BalancesReport | undefined,
+  netWorth: NetWorthReport | undefined,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const g of balances?.groups ?? [])
+    for (const a of g.accounts) out.set(a.id, a.balance_minor);
+  for (const a of netWorth?.accounts ?? []) out.set(a.id, a.balance_minor);
+  return out;
+}
+
 export const bySortOrder = (a: ApiAccount, b: ApiAccount) =>
   a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'id');
 
@@ -66,6 +83,8 @@ export interface SectionInput {
   types: ApiAccountType[];
   groups: ApiAccountGroup[];
   values: Map<string, string | null>;
+  /** own-currency balances (resolveNatives); optional */
+  natives?: Map<string, string>;
   showArchived: boolean;
 }
 
@@ -82,9 +101,13 @@ export function buildAccountSections(input: SectionInput): AccountSection[] {
       .map((account) => {
         const archived = account.archived_at !== null;
         const raw = archived ? null : (input.values.get(account.id) ?? null);
+        const type = typeById.get(account.type_id)!;
+        const nativeRaw =
+          archived || type.has_holdings ? null : (input.natives?.get(account.id) ?? null);
         return {
           account,
           kind,
+          native: kind === 'liability' ? asLiability(nativeRaw) : nativeRaw,
           typeName: typeById.get(account.type_id)!.name,
           typeIcon: typeById.get(account.type_id)!.icon,
           groupName: account.group_id ? (groupById.get(account.group_id) ?? null) : null,

@@ -90,7 +90,7 @@ describe('defaultFeeCategory', () => {
 describe('formatMinorCurrency', () => {
   it('IDR without decimals, other currencies with 2', () => {
     expect(formatMinorCurrency('-150000000', 'IDR')).toBe('-Rp1.500.000');
-    expect(formatMinorCurrency('6150', 'USD')).toBe('USD 61,50');
+    expect(formatMinorCurrency('6150', 'USD')).toBe('US$61,50');
     expect(formatMinorCurrency(null, 'IDR')).toBe('–');
   });
 });

@@ -11,9 +11,29 @@ pnpm install
 docker compose up db -d     # Postgres 16 on 127.0.0.1:5432
 export DATABASE_URL=postgres://finhub:change-me@localhost:5432/finhub
 pnpm db:migrate
-pnpm db:seed                # idempotent demo workspace, currencies, types, categories
+pnpm db:seed                # idempotent base data: demo workspace, currencies, types, categories
+pnpm db:seed:demo           # optional: + fake accounts, holdings and ~3 months of transactions
 pnpm dev                    # API http://localhost:3000 + web http://localhost:5173 (proxies /api)
 ```
+
+## Coba dengan data demo / Try it with demo data
+
+Fake data only ("PT Contoh Sejahtera", "Bank Demo", "Kartu Kredit Demo"): 8 accounts of every kind (incl. a USD account with FX rates, a credit card and an investment account with a fund and gold) and about 3 months of transactions ending today.
+
+```sh
+git clone <repo-url> finhub && cd finhub
+echo 'POSTGRES_PASSWORD=pilih-sandi-lokal' > .env
+docker compose up -d --build
+# then EITHER seed once:
+docker compose run --rm app node dist/seed.js --demo
+# OR set DEMO_SEED=true in .env before `up` (seeds once at startup, after migrations)
+```
+
+Open http://localhost:3000. Seeding is idempotent: it only adds data while the demo workspace has no accounts. To start over: `docker compose down -v` (deletes the database volume), then `up` again.
+
+**It listens on 127.0.0.1 only and has no authentication. Never expose it publicly** (no port forwarding, no reverse proxy to the internet).
+
+Without any seeding, a brand-new database still works: on startup (`ROLE=all|web`) the server seeds the base data (currencies, the `demo` workspace, settings, account types, categories; no accounts or transactions) when the database has no workspace yet, and never again afterwards.
 
 ## Checks
 
