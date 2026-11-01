@@ -219,6 +219,17 @@ export const fetchMonthlySummary = (month: string) =>
   get<MonthlySummary>(`/api/v1/reports/monthly-summary?month=${month}`);
 export const fetchNetWorthHistory = (months = 6) =>
   get<NetWorthHistory>(`/api/v1/reports/net-worth-history?months=${months}`);
+export interface AccountBalanceHistory {
+  currency: string;
+  from: string;
+  to: string;
+  /** end-of-day balance (Asia/Jakarta) in the account's own currency, oldest first */
+  points: { date: string; balance_minor: string }[];
+  start_balance_minor: string;
+  end_balance_minor: string;
+}
+export const fetchAccountBalanceHistory = (id: string, days = 30) =>
+  get<AccountBalanceHistory>(`/api/v1/accounts/${id}/balance-history?days=${days}`);
 export const fetchSettings = () => get<Settings>('/api/v1/settings');
 export const patchSettings = (body: { accent: string }) =>
   request<Settings>('/api/v1/settings', { method: 'PATCH', body });

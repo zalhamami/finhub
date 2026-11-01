@@ -61,7 +61,7 @@ export function createApp(deps: AppDeps = {}): Hono {
     mount('/currencies', currenciesRoutes());
     mount('/account-types', accountTypesRoutes());
     mount('/account-groups', accountGroupsRoutes());
-    mount('/accounts', accountsRoutes());
+    mount('/accounts', accountsRoutes({ now: deps.now }));
     mount('/categories', categoriesRoutes());
     mount('/tags', tagsRoutes());
     mount('/transactions', transactionsRoutes());

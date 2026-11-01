@@ -47,6 +47,11 @@ const routeTree = rootRoute.addChildren([
   }),
   createRoute({
     getParentRoute: () => rootRoute,
+    path: '/akun/$accountId',
+    component: lazyRouteComponent(() => import('./pages/AccountDetailPage'), 'AccountDetailPage'),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
     path: '/kategori',
     component: lazyRouteComponent(() => import('./pages/CategoriesPage'), 'CategoriesPage'),
   }),

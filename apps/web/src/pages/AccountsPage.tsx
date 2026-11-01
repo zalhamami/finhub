@@ -10,7 +10,6 @@ import {
   Switch,
   Text,
   Title,
-  UnstyledButton,
 } from '@mantine/core';
 import {
   IconAlertCircle,
@@ -21,6 +20,7 @@ import {
   IconWallet,
 } from '@tabler/icons-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Amount } from '../components/Amount';
 import { AccountAmount } from '../components/AccountAmount';
@@ -28,7 +28,6 @@ import { AccountForm } from '../features/AccountForm';
 import {
   createAccount,
   createAccountGroup,
-  deleteAccount,
   fetchAccountGroups,
   fetchAccountTypes,
   fetchAccounts,
@@ -36,10 +35,7 @@ import {
   fetchCurrencies,
   fetchNetWorth,
   reorderAccounts,
-  setAccountArchived,
-  updateAccount,
   type AccountPayload,
-  type ApiAccount,
 } from '../lib/api';
 import {
   buildAccountSections,
@@ -52,12 +48,9 @@ import {
 import { friendlyError } from '../lib/errors';
 import { notifyError, notifySuccess } from '../lib/notify';
 import { colorVar } from '../lib/palette';
-import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { EntityIcon } from '../ui/EntityIcon';
 import { ResponsiveFormSheet } from '../ui/ResponsiveFormSheet';
 import classes from './AccountsPage.module.css';
-
-type Sheet = { mode: 'create' } | { mode: 'edit'; account: ApiAccount } | null;
 
 export function AccountsPage() {
   const qc = useQueryClient();
@@ -73,12 +66,11 @@ export function AccountsPage() {
   const balances = useQuery({ queryKey: ['reports', 'balances'], queryFn: fetchBalances });
   const netWorth = useQuery({ queryKey: ['reports', 'net-worth'], queryFn: fetchNetWorth });
 
-  const [sheet, setSheet] = useState<Sheet>(null);
+  // Editing an account lives on its detail page (/akun/:id); this page only creates.
+  const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [sorting, setSorting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<ApiAccount | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const refresh = () =>
     Promise.all([
@@ -86,48 +78,20 @@ export function AccountsPage() {
       qc.invalidateQueries({ queryKey: ['reports'] }),
     ]);
   const closeSheet = () => {
-    setSheet(null);
+    setCreating(false);
     setFormError(null);
   };
 
   const save = useMutation({
-    mutationFn: (payload: AccountPayload) =>
-      sheet?.mode === 'edit' ? updateAccount(sheet.account.id, payload) : createAccount(payload),
+    mutationFn: (payload: AccountPayload) => createAccount(payload),
     onSuccess: async () => {
       await refresh();
       closeSheet();
-      notifySuccess(sheet?.mode === 'edit' ? 'Akun diperbarui' : 'Akun ditambahkan');
+      notifySuccess('Akun ditambahkan');
     },
     onError: (e) => {
       const msg = friendlyError(e, 'account');
       setFormError(msg);
-      notifyError(msg);
-    },
-  });
-  const archive = useMutation({
-    mutationFn: (a: ApiAccount) => setAccountArchived(a.id, a.archived_at === null),
-    onSuccess: async (_d, a) => {
-      await refresh();
-      closeSheet();
-      notifySuccess(a.archived_at === null ? 'Akun diarsipkan' : 'Akun diaktifkan kembali');
-    },
-    onError: (e) => {
-      const msg = friendlyError(e, 'account');
-      setFormError(msg);
-      notifyError(msg);
-    },
-  });
-  const remove = useMutation({
-    mutationFn: (a: ApiAccount) => deleteAccount(a.id),
-    onSuccess: async () => {
-      await refresh();
-      setConfirmDelete(null);
-      closeSheet();
-      notifySuccess('Akun dihapus');
-    },
-    onError: (e) => {
-      const msg = friendlyError(e, 'account');
-      setDeleteError(msg);
       notifyError(msg);
     },
   });
@@ -182,7 +146,7 @@ export function AccountsPage() {
   });
   const baseCurrency = netWorth.data?.base_currency ?? balances.data?.base_currency ?? 'IDR';
   const hasArchived = accounts.data.some((a) => a.archived_at !== null);
-  const openCreate = () => setSheet({ mode: 'create' });
+  const openCreate = () => setCreating(true);
 
   return (
     <Stack gap="lg">
@@ -234,7 +198,6 @@ export function AccountsPage() {
             section={section}
             baseCurrency={baseCurrency}
             sorting={sorting}
-            onEdit={(account) => setSheet({ mode: 'edit', account })}
             onMove={(id, dir) => {
               const updates = moveItem(
                 section.rows.map((r) => ({ id: r.account.id, sort_order: r.account.sort_order })),
@@ -247,15 +210,10 @@ export function AccountsPage() {
         ))
       )}
 
-      <ResponsiveFormSheet
-        opened={sheet !== null}
-        onClose={closeSheet}
-        title={sheet?.mode === 'edit' ? 'Ubah akun' : 'Tambah akun'}
-      >
-        {sheet && types.data && groups.data && (
+      <ResponsiveFormSheet opened={creating} onClose={closeSheet} title="Tambah akun">
+        {creating && types.data && groups.data && (
           <AccountForm
-            key={sheet.mode === 'edit' ? sheet.account.id : 'new'}
-            account={sheet.mode === 'edit' ? sheet.account : undefined}
+            key="new"
             types={types.data}
             groups={groups.data}
             currencies={currencies.data ?? []}
@@ -266,31 +224,9 @@ export function AccountsPage() {
               save.mutate(payload);
             }}
             onCreateGroup={(name) => createGroup.mutateAsync(name)}
-            onToggleArchive={
-              sheet.mode === 'edit' ? () => archive.mutate(sheet.account) : undefined
-            }
-            onDelete={
-              sheet.mode === 'edit'
-                ? () => {
-                    setDeleteError(null);
-                    setConfirmDelete(sheet.account);
-                  }
-                : undefined
-            }
           />
         )}
       </ResponsiveFormSheet>
-
-      <ConfirmDialog
-        opened={confirmDelete !== null}
-        title="Hapus akun?"
-        message={`Akun "${confirmDelete?.name ?? ''}" akan dihapus permanen. Akun yang sudah punya transaksi tidak bisa dihapus; arsipkan saja.`}
-        confirmLabel="Hapus"
-        loading={remove.isPending}
-        error={deleteError}
-        onClose={() => setConfirmDelete(null)}
-        onConfirm={() => confirmDelete && remove.mutate(confirmDelete)}
-      />
     </Stack>
   );
 }
@@ -299,13 +235,11 @@ function SectionCard({
   section,
   baseCurrency,
   sorting,
-  onEdit,
   onMove,
 }: {
   section: AccountSection;
   baseCurrency: string;
   sorting: boolean;
-  onEdit: (a: ApiAccount) => void;
   onMove: (id: string, dir: 'up' | 'down') => void;
 }) {
   return (
@@ -319,7 +253,7 @@ function SectionCard({
       <ul className={classes.list}>
         {section.rows.map((row, i) => (
           <li key={row.account.id} className={classes.item}>
-            <AccountLine row={row} baseCurrency={baseCurrency} onEdit={onEdit} />
+            <AccountLine row={row} baseCurrency={baseCurrency} />
             {sorting && (
               <Group gap={2} wrap="nowrap" className={classes.moves}>
                 <ActionIcon
@@ -347,22 +281,15 @@ function SectionCard({
   );
 }
 
-function AccountLine({
-  row,
-  baseCurrency,
-  onEdit,
-}: {
-  row: AccountRow;
-  baseCurrency: string;
-  onEdit: (a: ApiAccount) => void;
-}) {
+function AccountLine({ row, baseCurrency }: { row: AccountRow; baseCurrency: string }) {
   const { account } = row;
   return (
-    <UnstyledButton
+    <Link
+      to="/akun/$accountId"
+      params={{ accountId: account.id }}
       className={classes.row}
       data-archived={row.archived || undefined}
-      aria-label={`Ubah ${account.name}`}
-      onClick={() => onEdit(account)}
+      aria-label={`Buka ${account.name}`}
     >
       <span className={classes.icon}>
         <EntityIcon name={account.icon ?? row.typeIcon} />
@@ -404,6 +331,6 @@ function AccountLine({
           tone={row.kind === 'liability' ? 'neutral' : 'plain'}
         />
       </Text>
-    </UnstyledButton>
+    </Link>
   );
 }

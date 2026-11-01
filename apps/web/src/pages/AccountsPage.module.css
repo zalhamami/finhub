@@ -21,6 +21,8 @@
 
 /* Desktop: table-like columns (name | type · group | balance). */
 .row {
+  color: inherit;
+  text-decoration: none;
   flex: 1;
   min-width: 0;
   display: grid;

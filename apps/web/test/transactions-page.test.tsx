@@ -153,7 +153,9 @@ describe('Transaksi page', () => {
     expect(within(wed).getByText('kopi pagi')).toBeTruthy();
     expect(within(wed).getByText('-Rp25.000')).toBeTruthy();
     // transfer: both accounts in the title, only the fee counts toward the day
-    expect(within(tue).getByText('Transfer: BCA → Dompet')).toBeTruthy();
+    expect(within(tue).getByText('Transfer')).toBeTruthy();
+    expect(within(tue).getByText('BCA')).toBeTruthy();
+    expect(within(tue).getByText('Dompet')).toBeTruthy();
     expect(within(tue).getByText('-Rp6.500', { selector: 'span' })).toBeTruthy();
   });
 

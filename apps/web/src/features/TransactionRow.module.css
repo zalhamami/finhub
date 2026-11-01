@@ -38,6 +38,23 @@ button.row:hover {
   min-width: 0;
 }
 
+.route {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.routeName {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.routeArrow {
+  flex: none;
+  color: var(--finhub-text-muted);
+}
+
 .account {
   display: none;
 }

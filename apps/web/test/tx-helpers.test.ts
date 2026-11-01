@@ -178,7 +178,7 @@ describe('describeTransaction (list row)', () => {
     expect(m).toMatchObject({ title: 'Gaji', amount: { minor: '900000000', tone: 'income' } });
   });
 
-  it('transfer: "Transfer: A → B", sent amount (positive, dimmed), fee noted', () => {
+  it('transfer: title "Transfer", route A → B, sent amount (positive, dimmed), fee noted', () => {
     const m = describeTransaction(
       tx({
         kind: 'transfer',
@@ -192,7 +192,8 @@ describe('describeTransaction (list row)', () => {
       cats,
     );
     expect(m).toMatchObject({
-      title: 'Transfer: BCA → Dompet',
+      title: 'Transfer',
+      route: { from: 'BCA', to: 'Dompet' },
       accountName: '',
       category: null,
       amount: { minor: '100000', currency: 'IDR', tone: 'dimmed' },
@@ -209,7 +210,8 @@ describe('describeTransaction (list row)', () => {
       accounts,
       cats,
     );
-    expect(m.title).toBe('Transfer: Wise → BCA');
+    expect(m.title).toBe('Transfer');
+    expect(m.route).toEqual({ from: 'Wise', to: 'BCA' });
     expect(m.amount).toMatchObject({ minor: '6150', currency: 'USD' });
   });
 

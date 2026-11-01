@@ -106,9 +106,10 @@ export default function TransactionSheet({
     if (!accounts.data || !categories.data) return null;
     if (sheet.mode === 'edit') return transactionToForm(sheet.tx);
     const active = accounts.data.filter((a) => !a.archived_at);
+    const preset = active.find((a) => a.id === sheet.accountId);
     return {
       ...newTxForm(),
-      account_id: active.length === 1 ? active[0]!.id : '',
+      account_id: preset ? preset.id : active.length === 1 ? active[0]!.id : '',
       fee_category_id: defaultFeeCategory(categories.data),
     };
   }, [sheet, accounts.data, categories.data]);

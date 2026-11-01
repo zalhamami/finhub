@@ -15,6 +15,8 @@ import {
   type AppEnv,
 } from '../lib/http';
 import { assertOwned } from '../lib/refs';
+import { balanceSeries, daysBefore, loadDailyDeltas } from '../lib/balance-history';
+import { todayJakarta } from '../lib/time';
 
 const t = schema.accounts;
 const day = z.number().int().min(1).max(31);
@@ -47,7 +49,9 @@ const reorderSchema = z
   .max(500)
   .refine((a) => new Set(a.map((x) => x.id)).size === a.length, 'duplicate ids');
 
-export function accountsRoutes(): Hono<AppEnv> {
+const historyQuery = z.object({ days: z.coerce.number().int().min(1).max(365).default(30) });
+
+export function accountsRoutes(deps: { now?: () => Date } = {}): Hono<AppEnv> {
   const r = new Hono<AppEnv>();
   const where = (ws: string, id: string) => and(eq(t.id, id), eq(t.workspaceId, ws));
 
@@ -154,6 +158,30 @@ export function accountsRoutes(): Hono<AppEnv> {
       .where(where(c.var.workspaceId, c.req.valid('param').id));
     if (!row) throw notFound('Account');
     return send(c, toApi(row));
+  });
+
+  // End-of-day balance (Asia/Jakarta) in the account's own currency for the last `days` days:
+  // days + 1 points, from `days` ago through today. Opening balance is always included.
+  r.get('/:id/balance-history', v('param', idParam), v('query', historyQuery), async (c) => {
+    const { id } = c.req.valid('param');
+    const { days } = c.req.valid('query');
+    const [acc] = await c.var.db.select().from(t).where(where(c.var.workspaceId, id));
+    if (!acc) throw notFound('Account');
+    const to = todayJakarta(deps.now?.());
+    const from = daysBefore(to, days);
+    const deltas = await loadDailyDeltas(c.var.db, c.var.workspaceId, id, to);
+    const points = balanceSeries(acc.openingBalanceMinor, deltas, from, to).map((p) => ({
+      date: p.date,
+      balance_minor: p.balanceMinor,
+    }));
+    return send(c, {
+      currency: acc.currency,
+      from,
+      to,
+      points,
+      start_balance_minor: points[0]!.balance_minor,
+      end_balance_minor: points.at(-1)!.balance_minor,
+    });
   });
 
   r.post('/', v('json', createSchema), async (c) => {

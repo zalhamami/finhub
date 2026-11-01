@@ -12,10 +12,14 @@ import type { ApiTransaction } from '../lib/api';
 // The sheet (form, date pickers, queries) is a lazy chunk, fetched the first time it opens.
 const TransactionSheet = lazy(() => import('./TransactionSheet'));
 
-export type SheetState = { mode: 'create' } | { mode: 'edit'; tx: ApiTransaction };
+export type SheetState =
+  /** `accountId`: preselect this account (a transfer starts from it) */
+  { mode: 'create'; accountId?: string } | { mode: 'edit'; tx: ApiTransaction };
 
 interface Value {
   openCreate: () => void;
+  /** Add sheet with this account preselected (a transfer starts from it). */
+  openCreateForAccount: (accountId: string) => void;
   openEdit: (tx: ApiTransaction) => void;
   isOpen: boolean;
 }
@@ -44,6 +48,7 @@ export function TransactionSheetProvider({ children }: { children: ReactNode }) 
     };
     return {
       openCreate: () => open({ mode: 'create' }),
+      openCreateForAccount: (accountId) => open({ mode: 'create', accountId }),
       openEdit: (tx) => open({ mode: 'edit', tx }),
       isOpen: opened,
     };

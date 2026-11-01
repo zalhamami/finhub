@@ -1,0 +1,150 @@
+/* back | centered name | Ubah */
+.header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mantine-spacing-xs);
+  min-width: 0;
+  font-size: var(--mantine-font-size-lg);
+}
+
+.titleIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+}
+
+.titleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit {
+  justify-self: end;
+}
+
+.layout {
+  display: grid;
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+}
+
+.caption {
+  letter-spacing: 0.06em;
+}
+
+.balance {
+  font-size: var(--mantine-font-size-xl);
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  padding: 2px var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-xl);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  font-variant-numeric: var(--amount-features);
+  color: var(--finhub-text-muted);
+  background: var(--mantine-color-default-hover);
+}
+
+.up {
+  color: light-dark(var(--mantine-color-income-8), var(--mantine-color-income-4));
+}
+
+.down {
+  color: var(--finhub-amount-negative);
+}
+
+.addDesktop {
+  display: none;
+}
+
+.listCard {
+  overflow: clip;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dayHeader {
+  position: sticky;
+  top: var(--app-shell-header-offset, 56px);
+  z-index: 2;
+  margin: 0;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-lg);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  background: var(--finhub-page-bg);
+  border-bottom: 1px solid var(--finhub-border);
+}
+
+.notFound {
+  text-align: center;
+  padding-block: var(--mantine-spacing-xl);
+}
+
+/* mobile: room so the last row scrolls clear of the floating add (56px + gap) */
+.page {
+  padding-bottom: calc(56px + var(--mantine-spacing-md) + var(--safe-bottom));
+}
+
+/* mobile: floating add above the tab bar, clear of the home indicator */
+.fab {
+  position: fixed;
+  z-index: 90;
+  inset-inline-end: var(--mantine-spacing-md);
+  bottom: calc(var(--tabbar-height) + var(--safe-bottom) + var(--mantine-spacing-md));
+  box-shadow: var(--mantine-shadow-md);
+}
+
+@media (min-width: 48em) {
+  .page {
+    padding-bottom: 0;
+  }
+
+  .fab {
+    display: none;
+  }
+
+  .addDesktop {
+    display: flex;
+  }
+
+  .balance {
+    font-size: 1.75rem;
+  }
+}
+
+/* wide: summary beside the list */
+@media (min-width: 64em) {
+  .layout {
+    grid-template-columns: 400px minmax(0, 1fr);
+    gap: var(--mantine-spacing-lg);
+  }
+
+  .summary {
+    position: sticky;
+    top: calc(var(--app-shell-header-offset, 56px) + var(--mantine-spacing-md));
+  }
+}

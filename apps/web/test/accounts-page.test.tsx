@@ -102,12 +102,15 @@ describe('AccountsPage', () => {
     expect(await screen.findByLabelText(/Nama akun/)).toBeTruthy();
   });
 
-  it('clicking a row opens the edit form', async () => {
+  it('a row is a real link to the account detail page (no longer opens the edit form)', async () => {
     stubApi([acc('a1', 'BCA Tahapan')]);
     renderAkun();
-    fireEvent.click(await screen.findByRole('button', { name: 'Ubah BCA Tahapan' }));
-    expect(((await screen.findByLabelText(/Nama akun/)) as HTMLInputElement).value).toBe(
-      'BCA Tahapan',
-    );
+    const link = (await screen.findByRole('link', {
+      name: 'Buka BCA Tahapan',
+    })) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/akun/a1');
+    expect(screen.queryByLabelText(/Nama akun/)).toBeNull();
+    fireEvent.click(link);
+    expect(screen.queryByLabelText(/Nama akun/)).toBeNull();
   });
 });

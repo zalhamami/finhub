@@ -280,8 +280,10 @@ export interface TxRowModel {
   category: { icon: string | null; color: string | null } | null;
   /** "payee · note" or '' */
   detail: string;
-  /** '' for transfers (the title already names both accounts) */
+  /** '' for transfers (see `route`) */
   accountName: string;
+  /** transfers only: source and destination account names ("Dari → Ke" line) */
+  route: { from: string; to: string } | null;
   amount: { minor: string; currency: string; tone: 'neutral' | 'income' | 'dimmed' };
   /** transfer fee in the source currency, when there is one */
   feeMinor: string | null;
@@ -326,6 +328,8 @@ export function describeTransaction(
   accounts: ReadonlyMap<string, { name: string }>,
   categories: ReadonlyMap<string, { name: string; icon: string | null; color: string | null }>,
   fx?: FxContext,
+  /** list of one account: a transfer shows THIS account's leg, signed (out negative, in positive) */
+  viewAccountId?: string,
 ): TxRowModel {
   const accountName = (id: string | undefined) =>
     (id && accounts.get(id)?.name) || 'Akun tidak dikenal';
@@ -350,11 +354,36 @@ export function describeTransaction(
         baseEquivalent(sent, fromCcy, jakartaDate(tx.occurred_at), fx),
         fx.baseCurrency,
       )!.secondary;
+    const route = { from: accountName(from?.account_id), to: accountName(to?.account_id) };
+    const mine = viewAccountId ? legs.find((l) => l.account_id === viewAccountId) : undefined;
+    let title = 'Transfer';
+    if (mine) {
+      const incoming = (parseMinor(mine.amount_minor) ?? 0n) > 0n;
+      title = incoming ? 'Transfer masuk' : 'Transfer keluar';
+      return {
+        title,
+        category: null,
+        detail,
+        accountName: '',
+        route,
+        amount: {
+          minor: mine.amount_minor,
+          currency: mine.currency,
+          tone: incoming ? 'income' : 'neutral',
+        },
+        feeMinor: !incoming && fee ? absMinor(fee.amount_minor) : null,
+        secondary:
+          !incoming && crossCurrency
+            ? `→ ${formatMinorCurrency(absMinor(to.amount_minor), to.currency)}`
+            : null,
+      };
+    }
     return {
-      title: `Transfer: ${accountName(from?.account_id)} → ${accountName(to?.account_id)}`,
+      title,
       category: null,
       detail,
       accountName: '',
+      route,
       amount: { minor: sent, currency: from?.currency ?? 'IDR', tone: 'dimmed' },
       feeMinor: fee ? absMinor(fee.amount_minor) : null,
       secondary,
@@ -376,6 +405,7 @@ export function describeTransaction(
     category: cat ? { icon: cat.icon, color: cat.color } : null,
     detail,
     accountName: accountName(e?.account_id),
+    route: null,
     amount: {
       minor: e?.amount_minor ?? '0',
       currency: e?.currency ?? 'IDR',

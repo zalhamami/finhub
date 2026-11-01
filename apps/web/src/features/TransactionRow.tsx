@@ -1,8 +1,10 @@
 import { Text, UnstyledButton } from '@mantine/core';
+import { IconArrowRight } from '@tabler/icons-react';
 import { Amount } from '../components/Amount';
 import type { ApiAccount, ApiTransaction } from '../lib/api';
 import type { indexCategories } from '../lib/categories';
 import { formatMinorCurrency } from '../lib/money';
+import { jakartaTime } from '../lib/dates';
 import { colorVar } from '../lib/palette';
 import { describeTransaction, type FxContext } from '../lib/transactions';
 import { EntityIcon } from '../ui/EntityIcon';
@@ -15,14 +17,20 @@ export function TransactionRow({
   categories,
   fx,
   onOpen,
+  viewAccountId,
+  showTime,
 }: {
   fx?: FxContext;
+  /** list of one account: transfers show this account's leg, signed */
+  viewAccountId?: string;
+  /** Jakarta HH:mm under the amount */
+  showTime?: boolean;
   tx: ApiTransaction;
   accounts: ReadonlyMap<string, ApiAccount>;
   categories: ReturnType<typeof indexCategories>;
   onOpen: (tx: ApiTransaction) => void;
 }) {
-  const m = describeTransaction(tx, accounts, categories, fx);
+  const m = describeTransaction(tx, accounts, categories, fx, viewAccountId);
   const editable = tx.kind !== 'adjustment';
   const body = (
     <>
@@ -40,6 +48,17 @@ export function TransactionRow({
         <Text span fw={500} truncate className={classes.title}>
           {m.title}
         </Text>
+        {m.route && (
+          <span className={classes.route}>
+            <Text span size="sm" c="dimmed" truncate className={classes.routeName}>
+              {m.route.from}
+            </Text>
+            <IconArrowRight size={14} stroke={1.75} className={classes.routeArrow} aria-hidden />
+            <Text span size="sm" c="dimmed" truncate className={classes.routeName}>
+              {m.route.to}
+            </Text>
+          </span>
+        )}
         {m.detail && (
           <Text span size="sm" c="dimmed" truncate>
             {m.detail}
@@ -64,6 +83,11 @@ export function TransactionRow({
         {m.secondary && (
           <Text span size="xs" c="dimmed" className={classes.fee}>
             {m.secondary}
+          </Text>
+        )}
+        {showTime && (
+          <Text span size="xs" c="dimmed" className={classes.fee}>
+            {jakartaTime(tx.occurred_at)}
           </Text>
         )}
         {m.feeMinor && (
