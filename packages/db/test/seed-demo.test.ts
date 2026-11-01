@@ -156,6 +156,46 @@ describe.skipIf(!url)('demo seed (scratch database)', () => {
     expect(await counts()).toEqual(before);
   });
 
+  it('every demo category has an icon and a color name; user choices are kept', async () => {
+    const cats = await h.db.select().from(s.categories);
+    expect(cats.length).toBeGreaterThan(15);
+    for (const c of cats) {
+      expect(c.icon, c.name).toBeTruthy();
+      expect(c.color, c.name).toBeTruthy();
+    }
+    const by = Object.fromEntries(cats.map((c) => [c.name, c]));
+    expect(by['Makan & Minum']).toMatchObject({ icon: 'tools-kitchen', color: 'orange' });
+    expect(by['Kopi']).toMatchObject({ icon: 'coffee', color: 'amber' });
+    expect(by['Gaji']!.color).toBe('income');
+    expect(by['Biaya admin']!.color).toBe('gray');
+  });
+
+  it('never dates a transaction after "now" (today is clamped to the current Jakarta time)', async () => {
+    const now = new Date('2026-03-15T03:30:00Z'); // 10:30 Jakarta
+    await h.db.execute(q`delete from transactions`);
+    await h.db.execute(q`delete from accounts`);
+    await seedDemo(h.db, { today: '2026-03-15', now });
+    const future =
+      await h.sql`select count(*)::int n from transactions where occurred_at > ${now.toISOString()}::timestamptz`;
+    expect(future[0]!.n).toBe(0);
+    const todays = await h.sql`
+      select count(*)::int n from transactions
+      where occurred_at >= '2026-03-15T00:00:00+07:00' and occurred_at <= ${now.toISOString()}::timestamptz`;
+    expect(todays[0]!.n).toBeGreaterThan(0);
+    // deterministic for a fixed now
+    const snap = async () =>
+      (
+        await h.sql`select occurred_at::text t, payee from transactions order by occurred_at, payee, id`
+      )
+        .map((r) => `${r.t}|${r.payee}`)
+        .sort();
+    const a = await snap();
+    await h.db.execute(q`delete from transactions`);
+    await h.db.execute(q`delete from accounts`);
+    await seedDemo(h.db, { today: '2026-03-15', now });
+    expect(await snap()).toEqual(a);
+  });
+
   it('is deterministic for a fixed today + seed', async () => {
     const snapshot = async () =>
       (

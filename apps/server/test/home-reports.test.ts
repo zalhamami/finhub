@@ -113,6 +113,24 @@ describe.skipIf(!DATABASE_URL)('reports: monthly-summary', () => {
     expect(rows[0]).toMatchObject({ category_id: expect.any(String), icon: null });
   });
 
+  it('top categories carry the icon/color of the rolled-up parent', async () => {
+    const cats = await A('GET', '/categories?flat=true');
+    const parent = (cats.data as { id: string; name: string }[]).find(
+      (c) => c.name === 'Makan & Minum',
+    )!;
+    const patch = await A('PATCH', `/categories/${parent.id}`, {
+      icon: 'tools-kitchen',
+      color: 'orange',
+    });
+    expect(patch.status).toBe(200);
+    const r = await A('GET', '/reports/monthly-summary?month=2026-11');
+    const row = (r.data.top_categories as { name: string }[]).find(
+      (x) => x.name === 'Makan & Minum',
+    );
+    // Kopi (child, no icon of its own) rolls up into the parent: parent's look is returned
+    expect(row).toMatchObject({ icon: 'tools-kitchen', color: 'orange' });
+  });
+
   it('defaults to the current Jakarta month; a past month paces against the whole previous month', async () => {
     expect((await A('GET', '/reports/monthly-summary')).data.month).toBe('2026-11');
     const oct = await A('GET', '/reports/monthly-summary?month=2026-10');

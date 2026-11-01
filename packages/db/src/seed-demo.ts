@@ -26,6 +26,8 @@ export interface DemoOptions {
   seed?: number;
   /** length of the window ending at `today`; default 90 */
   days?: number;
+  /** the clock; default: new Date(). Today's transactions are never dated after it. */
+  now?: Date;
 }
 
 export interface DemoResult {
@@ -187,6 +189,27 @@ const EXTRA_CATEGORIES: { parent: string; kind: 'expense' | 'income'; children: 
   { parent: 'Pendapatan lain', kind: 'income', children: ['Freelance'] },
 ];
 
+/** Demo category look: name -> [icon key from web CATEGORY_ICONS, color name from web COLOR_NAMES]. */
+const CATEGORY_LOOK: Record<string, [string, string]> = {
+  'Makan & Minum': ['tools-kitchen', 'orange'],
+  Kopi: ['coffee', 'amber'],
+  Transportasi: ['bus', 'blue'],
+  'Transportasi online': ['car', 'blue'],
+  Belanja: ['shopping-bag', 'grape'],
+  'Belanja bulanan': ['shopping-cart', 'grape'],
+  Tagihan: ['receipt', 'cyan'],
+  Listrik: ['bolt', 'cyan'],
+  Internet: ['home', 'cyan'],
+  Pulsa: ['device-mobile', 'cyan'],
+  'Biaya admin': ['building-bank', 'gray'],
+  Hiburan: ['device-tv', 'violet'],
+  Langganan: ['device-tv', 'violet'],
+  Gaji: ['cash', 'income'],
+  'Bonus/THR': ['gift', 'income'],
+  'Pendapatan lain': ['coin', 'income'],
+  Freelance: ['briefcase', 'income'],
+};
+
 interface Draft {
   date: string;
   time: string;
@@ -209,7 +232,10 @@ export async function seedDemo(db: Db, opts: DemoOptions = {}): Promise<DemoResu
     .limit(1);
   if (seeded) return { created: false, accounts: 0, transactions: 0 };
   await seed(db);
-  const today = opts.today ?? jakartaToday();
+  const now = opts.now ?? new Date();
+  const today = opts.today ?? jakartaToday(now);
+  // current Jakarta wall-clock time (HH:MM); transactions dated `today` are clamped to it
+  const nowTime = new Date(now.getTime() + 7 * 3600_000).toISOString().slice(11, 16);
   const days = opts.days ?? 90;
 
   return db.transaction(async (tx): Promise<DemoResult> => {
@@ -252,6 +278,16 @@ export async function seedDemo(db: Db, opts: DemoOptions = {}): Promise<DemoResu
     for (const e of EXTRA_CATEGORIES) {
       const parent = await ensureCategory(e.parent, e.kind, null);
       for (const child of e.children) await ensureCategory(child, e.kind, parent);
+    }
+    // fitting icon key (web CATEGORY_ICONS) + color name (web COLOR_NAMES); never overrides a value
+    for (const [name, [icon, color]] of Object.entries(CATEGORY_LOOK)) {
+      await tx
+        .update(s.categories)
+        .set({
+          icon: sql`coalesce(${s.categories.icon}, ${icon})`,
+          color: sql`coalesce(${s.categories.color}, ${color})`,
+        })
+        .where(and(eq(s.categories.workspaceId, workspaceId), eq(s.categories.name, name)));
     }
     const cat = (name: string): string => {
       const id = catId.get(name);
@@ -619,6 +655,8 @@ export async function seedDemo(db: Db, opts: DemoOptions = {}): Promise<DemoResu
     const txRows: (typeof s.transactions.$inferInsert)[] = [];
     const entryRows: (typeof s.entries.$inferInsert)[] = [];
     for (const d of drafts) {
+      // never in the future: move today's later-than-now entries back to the current time
+      if (d.date === today && today === jakartaToday(now) && d.time > nowTime) d.time = nowTime;
       const id = randomUUID();
       const lines: EntryLine[] = d.entries.map((e) => ({
         accountId: e.account,
