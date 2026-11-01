@@ -110,3 +110,14 @@
     padding-inline: var(--mantine-spacing-md);
   }
 }
+
+/* the native amount already shows the currency; on narrow screens the badge only squeezed the name */
+.currencyBadge {
+  flex: none;
+}
+
+@media (max-width: 47.99em) {
+  .currencyBadge {
+    display: none;
+  }
+}

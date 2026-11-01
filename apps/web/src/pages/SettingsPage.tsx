@@ -20,6 +20,7 @@ import {
   IconCategory,
   IconCheck,
   IconChevronRight,
+  IconCoin,
   IconWallet,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
@@ -125,6 +126,14 @@ export function SettingsPage() {
       </Card>
 
       <Card padding="xs">
+        <NavLink
+          component={Link}
+          to="/kekayaan"
+          label="Kekayaan"
+          description="Kekayaan bersih dan rinciannya per akun"
+          leftSection={<IconCoin size={20} stroke={1.75} />}
+          rightSection={<IconChevronRight size={16} stroke={1.75} />}
+        />
         <NavLink
           component={Link}
           to="/kategori"

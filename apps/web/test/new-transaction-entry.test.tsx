@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory } from '@tanstack/react-router';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createAppRouter } from '../src/router';
 import { ThemeRoot } from '../src/theme/AccentProvider';
@@ -50,12 +50,13 @@ describe('add-transaction entry points', () => {
     expect(screen.queryByText(/hadir di M2/)).toBeNull();
   });
 
-  it('the mobile FAB opens the form', async () => {
+  it('the center Tambah tab opens the form (no floating button any more)', async () => {
     stubDesktop(false);
     renderApp();
-    // jsdom has no CSS, so the (desktop-only) header button is in the DOM too; the FAB is last
-    const buttons = await screen.findAllByRole('button', { name: /Tambah transaksi/ });
-    fireEvent.click(buttons.at(-1)!);
+    const tabs = await screen.findByRole('navigation', { name: 'Navigasi utama' });
+    // the only add control besides the (desktop-only) header button lives in the tab bar
+    expect(document.querySelectorAll('button[class*="fab"]')).toHaveLength(0);
+    fireEvent.click(within(tabs).getByRole('button', { name: 'Tambah transaksi' }));
     expect(await screen.findByRole('dialog', { name: 'Tambah transaksi' })).toBeTruthy();
   });
 

@@ -17,6 +17,12 @@
 }
 
 .tab {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   flex: 1;
   min-height: 44px;
   min-width: 44px;
@@ -33,4 +39,20 @@
 
 .active {
   color: light-dark(var(--mantine-primary-color-9), var(--mantine-primary-color-3));
+}
+
+/* center Tambah: a filled accent circle, not a route (never "current") */
+.add {
+  color: var(--mantine-color-text);
+}
+
+.addIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-primary-color-contrast);
+  box-shadow: var(--mantine-shadow-sm);
 }

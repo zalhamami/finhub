@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  redirect,
   type RouterHistory,
 } from '@tanstack/react-router';
 import { Layout } from './components/Layout';
@@ -12,23 +13,26 @@ import { searchToFilters, type TxFilters } from './lib/txFilters';
 const rootRoute = createRootRoute({ component: Layout });
 
 // Pages are lazy chunks; only the shell (Layout) is in the entry bundle.
-const placeholder = (path: string, title: string) =>
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path,
-    component: lazyRouteComponent(
-      () => import('./pages/PlaceholderPage'),
-      `${title}Page` as 'BerandaPage',
-    ),
-  });
 
 const routeTree = rootRoute.addChildren([
   createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
+    // old "/" bookmarks (it used to be the net worth page) land on Beranda
+    beforeLoad: () => {
+      throw redirect({ to: '/beranda', replace: true });
+    },
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/beranda',
+    component: lazyRouteComponent(() => import('./pages/BerandaPage'), 'BerandaPage'),
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/kekayaan',
     component: lazyRouteComponent(() => import('./pages/NetWorthPage'), 'NetWorthPage'),
   }),
-  placeholder('/beranda', 'Beranda'),
   createRoute({
     getParentRoute: () => rootRoute,
     path: '/transaksi',

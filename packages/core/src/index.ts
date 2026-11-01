@@ -3,3 +3,4 @@ export * from './ledger';
 export * from './fx';
 export * from './networth';
 export * from './idr-parser';
+export * from './monthly';

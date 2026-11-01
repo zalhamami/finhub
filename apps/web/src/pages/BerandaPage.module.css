@@ -1,0 +1,165 @@
+.grid {
+  display: grid;
+  gap: var(--mantine-spacing-lg);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+/* mobile order: spending, categories, net worth, recent */
+.spending {
+  order: 1;
+}
+
+.categories {
+  order: 2;
+}
+
+.networth {
+  order: 3;
+}
+
+.recent {
+  order: 4;
+}
+
+@media (min-width: 48em) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'spending networth'
+      'categories recent';
+  }
+
+  .spending {
+    grid-area: spending;
+  }
+
+  .categories {
+    grid-area: categories;
+  }
+
+  .networth {
+    grid-area: networth;
+  }
+
+  .recent {
+    grid-area: recent;
+  }
+}
+
+/* Clay: this month's spending is ahead of last month at the same day (overspending only) */
+.over {
+  color: light-dark(var(--mantine-color-expense-7), var(--mantine-color-expense-4));
+  font-weight: 600;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mantine-spacing-md);
+  padding-top: var(--mantine-spacing-sm);
+  border-top: 1px solid var(--finhub-border);
+}
+
+.cats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cat {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: var(--mantine-spacing-sm);
+  align-items: center;
+  min-height: 48px;
+  padding: var(--mantine-spacing-xs);
+  border-radius: var(--mantine-radius-md);
+  color: inherit;
+  text-decoration: none;
+}
+
+.catLink:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.catIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-default-hover);
+  color: var(--cat, var(--mantine-color-text));
+}
+
+.catMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.catHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+}
+
+.catAmount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--mantine-spacing-xs);
+  flex: none;
+}
+
+.bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--mantine-color-default-hover);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  width: var(--w);
+  border-radius: 3px;
+  background: var(--cat, var(--mantine-primary-color-filled));
+}
+
+.more {
+  text-decoration: none;
+}
+
+.more:hover {
+  text-decoration: underline;
+}
+
+.recentCard {
+  overflow: clip;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mantine-spacing-sm);
+}
+
+@media (min-width: 48em) {
+  .quick {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

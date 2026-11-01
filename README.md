@@ -31,7 +31,11 @@ docker compose run --rm app node dist/seed.js --demo
 
 Open http://localhost:3000. Seeding is idempotent: it only adds data while the demo workspace has no accounts. To start over: `docker compose down -v` (deletes the database volume), then `up` again.
 
-**It listens on 127.0.0.1 only and has no authentication. Never expose it publicly** (no port forwarding, no reverse proxy to the internet).
+**It listens on 127.0.0.1 only and has no real authentication. Do not expose it publicly without the access gate below** (no port forwarding, no reverse proxy to the internet).
+
+### Demo publik
+
+To show the demo on the internet: set `FINHUB_ACCESS_PASSWORD` (and optionally `FINHUB_ACCESS_USER`, default `demo`) plus `DEMO_SEED=true` in `.env`, and put an HTTPS reverse proxy in front (the app itself speaks plain HTTP on 127.0.0.1:3000). With a password set, every route (pages, assets, `/api`) asks for HTTP Basic credentials; `/healthz` and the Telegram webhook (which has its own secret) stay open. Basic auth is a stopgap for a throwaway demo with fake data, **not real authentication**: do not put real financial data behind it. Leave the password empty (default) to turn the gate off.
 
 Without any seeding, a brand-new database still works: on startup (`ROLE=all|web`) the server seeds the base data (currencies, the `demo` workspace, settings, account types, categories; no accounts or transactions) when the database has no workspace yet, and never again afterwards.
 
@@ -87,7 +91,7 @@ docker compose stop app && infra/restore.sh backups/finhub-....dump   # asks for
 
 ## Web app
 
-`pnpm dev` runs the server (:3000) and Vite (:5173, proxies `/api` and `/healthz`). `pnpm --filter @finhub/web build` outputs `apps/web/dist`; the root `pnpm build` copies it to `apps/server/dist/public` so one process serves SPA and API. Currently: Kekayaan (net worth) reads the real reports API; other pages are placeholders for M2.
+`pnpm dev` runs the server (:3000) and Vite (:5173, proxies `/api` and `/healthz`). `pnpm --filter @finhub/web build` outputs `apps/web/dist`; the root `pnpm build` copies it to `apps/server/dist/public` so one process serves SPA and API. Pages: Beranda (`/beranda`, the landing page: monthly spending, top categories, net worth trend, recent transactions), Transaksi, Akun, Kategori, Kekayaan (`/kekayaan`, net worth), Pengaturan. The old `/` redirects to Beranda.
 
 ## Telegram bot
 

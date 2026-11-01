@@ -361,7 +361,7 @@ function AccountLine({
           {account.name}
         </Text>
         {account.currency !== baseCurrency && (
-          <Badge size="sm" variant="light">
+          <Badge size="sm" variant="light" className={classes.currencyBadge}>
             {account.currency}
           </Badge>
         )}

@@ -30,6 +30,51 @@ export interface NetWorthReport {
   missing_rates: MissingRate[];
 }
 
+export interface MonthlyTotals {
+  income_minor: string;
+  expense_minor: string;
+  net_minor: string;
+}
+export interface MonthlyCategory {
+  /** null for the "Lainnya" roll-up */
+  category_id: string | null;
+  name: string;
+  icon: string | null;
+  /** palette color NAME */
+  color: string | null;
+  is_other: boolean;
+  amount_minor: string;
+  /** share of the month's expense in basis points (4762 = 47,62%) */
+  share_bps: number;
+  previous_amount_minor: string;
+}
+export interface MonthlySummary {
+  month: string;
+  base_currency: string;
+  current: MonthlyTotals;
+  previous: MonthlyTotals & { month: string; expense_to_date_minor: string };
+  compare_day: number;
+  /** this month's expense minus last month's through the same day; > 0 = spending faster */
+  expense_vs_previous_to_date_minor: string;
+  top_categories: MonthlyCategory[];
+  transaction_count: number;
+  missing_rates: { currency: string; quote: string }[];
+  unconverted_count: number;
+}
+export interface NetWorthPoint {
+  date: string;
+  net_worth_minor: string;
+  assets_minor: string;
+  liabilities_minor: string;
+  source: 'snapshot' | 'ledger';
+  complete: boolean;
+}
+export interface NetWorthHistory {
+  base_currency: string;
+  granularity: 'month' | 'week';
+  points: NetWorthPoint[];
+}
+
 export interface Settings {
   base_currency: string;
   locale: string;
@@ -170,6 +215,10 @@ async function request<T>(path: string, init?: { method: string; body?: unknown 
 const get = <T>(path: string) => request<T>(path);
 
 export const fetchNetWorth = () => get<NetWorthReport>('/api/v1/reports/net-worth');
+export const fetchMonthlySummary = (month: string) =>
+  get<MonthlySummary>(`/api/v1/reports/monthly-summary?month=${month}`);
+export const fetchNetWorthHistory = (months = 6) =>
+  get<NetWorthHistory>(`/api/v1/reports/net-worth-history?months=${months}`);
 export const fetchSettings = () => get<Settings>('/api/v1/settings');
 export const patchSettings = (body: { accent: string }) =>
   request<Settings>('/api/v1/settings', { method: 'PATCH', body });

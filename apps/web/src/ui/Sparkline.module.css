@@ -1,0 +1,27 @@
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.line {
+  fill: none;
+  stroke: var(--mantine-primary-color-filled);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.area {
+  fill: var(--mantine-primary-color-light);
+  stroke: none;
+}
+
+.dot {
+  fill: var(--mantine-primary-color-filled);
+  stroke: var(--mantine-color-body);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}

@@ -24,23 +24,8 @@
   margin-inline: auto;
 }
 
-/* floating action button: mobile only, above the tab bar */
-.fab {
-  position: fixed;
-  z-index: 101;
-  right: var(--mantine-spacing-md);
-  bottom: calc(var(--tabbar-height) + var(--mantine-spacing-md) + var(--safe-bottom));
-  box-shadow: var(--mantine-shadow-md);
-}
-
-@media (min-width: 48em) {
-  .fab {
-    display: none;
-  }
-}
-
 @media (max-width: 47.99em) {
   .main {
-    padding-bottom: calc(var(--tabbar-height) + 88px + var(--safe-bottom));
+    padding-bottom: calc(var(--tabbar-height) + var(--mantine-spacing-md) + var(--safe-bottom));
   }
 }

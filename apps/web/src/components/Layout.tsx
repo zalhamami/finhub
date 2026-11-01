@@ -7,7 +7,6 @@ import {
   Text,
   useComputedColorScheme,
   useMantineColorScheme,
-  useMantineTheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconMoon, IconPlus, IconSun } from '@tabler/icons-react';
@@ -52,7 +51,6 @@ function useNewTransactionShortcut(open: () => void, isOpen: boolean) {
 
 function Shell() {
   const { openCreate: open, isOpen } = useTransactionSheet();
-  const theme = useMantineTheme();
   useNewTransactionShortcut(open, isOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -64,7 +62,7 @@ function Shell() {
     >
       <AppShell.Header className={classes.header}>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Text component={Link} to="/" className={classes.logo}>
+          <Text component={Link} to="/beranda" className={classes.logo}>
             Finhub
           </Text>
           <Group gap="xs" wrap="nowrap">
@@ -102,17 +100,6 @@ function Shell() {
       </AppShell.Main>
 
       <BottomTabs />
-      <ActionIcon
-        variant="filled"
-        color={theme.primaryColor}
-        size="xl"
-        radius="xl"
-        aria-label="Tambah transaksi"
-        className={classes.fab}
-        onClick={open}
-      >
-        <IconPlus size={26} stroke={1.75} />
-      </ActionIcon>
     </AppShell>
   );
 }
